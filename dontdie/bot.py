@@ -47,12 +47,21 @@ class Pawn:
     def runattacker(self):
         if self.trycapture():
             return
-        self.tryforward()
+        if not self.forward_is_dangerous():
+            self.tryforward()
 
     def tryforward(self):
         if self.nextrow != -1 and self.nextrow != board_size and not check_space_wrapper(self.nextrow, self.col, self.board_size):
             move_forward()
             dlog('Moved forward!')
+
+    def forward_is_dangerous(self):
+        for cdiff in [-1, 1]:
+            if check_space_wrapper(self.nextrow + self.forward, self.col + cdiff, board_size) == opp_team: # up and right
+                dlog('Dangerous to move forward')
+                return True
+        return False
+
 
     def trycapture(self):
         # try catpuring pieces
