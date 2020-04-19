@@ -25,6 +25,14 @@ def check_space_wrapper(r, c, board_size):
         return None
 
 
+def spaces_in_front(a, b):
+    diff = b - a
+    return diff if team == Team.WHITE else -diff
+
+def map_loc(loc):
+    return loc if team == Team.WHITE else 15 - loc
+
+
 team = get_team()
 opp_team = Team.WHITE if team == Team.BLACK else team.BLACK
 board_size = get_board_size()
@@ -110,36 +118,44 @@ class Overlord:
         self.team = get_team()
         self.forward = 1 if self.team == Team.WHITE else -1
         self.board_size = get_board_size()
-        if self.team == Team.WHITE:
-            self.index = 0
-        else:
-            self.index = self.board_size - 1
+        self.index = 0 if self.team == Team.WHITE else self.board_size - 1
+        self.round_count = 0
 
     def run(self):
+        self.round_count = self.round_count + 1
         if self.check_defense():
             return
-        self.spawnrandom(5, self.board_size)
+        self.spawn_offense()
     
     def check_defense(self):
         for i in range(self.board_size):
-            need_defense = False
-            for j in range(5):
-                if check_space(self.index, i) == opp_team:
-                    need_defense = True
-                    break
-            if not need_defense:
-                break
-            if not check_space(self.index, i):
-                if check_space(self.index, i) != self.team:
+            opp_loc, my_loc = None, None
+            for j in range(self.board_size // 2):
+                j = map_loc(j)
+                space = check_space(j, i)
+                if space == opp_team and opp_loc is None:
+                    opp_loc = j
+                elif space == team and my_loc is None:
+                    my_loc = j
+            if opp_loc is None:
+                continue
+            if not my_loc or spaces_in_front(my_loc, opp_loc) < 0:
+                if not check_space(self.index, i):
                     spawn(self.index, i)
                     return True
         return False
 
+    def spawn_offense(self):
+        self.spawnrandom()
+
+    def spawnarrow(self):
+        pass
+
     def spawnrandom(self, min=None, max=None):
         if min is None: min = 0
-        if max is None: max = self.board_size
+        if max is None: max = self.board_size - 1
         for _ in range(min, max):
-            i = random.randint(0, self.board_size - 1)
+            i = random.randint(min, max)
             if not check_space(self.index, i):
                 spawn(self.index, i)
                 dlog('Spawned unit at: (' + str(self.index) + ', ' + str(i) + ')')

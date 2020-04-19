@@ -47,7 +47,7 @@ def step(number_of_turns=1):
         viewer.view()
 
 
-def play_all(delay=0.8, keep_history=False, real_time=False):
+def play_all(delay=0.4, keep_history=False, real_time=False):
     """
     This function plays the entire game, and views it in a nice animated way.
 

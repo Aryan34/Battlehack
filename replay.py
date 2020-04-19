@@ -34,7 +34,7 @@ def view_board(board):
     return new_board
 
 
-def play(board_states, delay=0.5):
+def play(board_states, delay=0.1):
     print('')
     for state_index in range(len(board_states)):
         view_board(board_states[state_index])
@@ -69,6 +69,6 @@ def parse_txt(filename):
         idx += 1
     return boards
 
-boards = parse_txt("replay.txt")
+boards = parse_txt("kryptonite.txt")
 print(len(boards))
 play(boards)
