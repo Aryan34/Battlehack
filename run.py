@@ -47,7 +47,7 @@ def step(number_of_turns=1):
         viewer.view()
 
 
-def play_all(delay=0.4, keep_history=False, real_time=False):
+def play_all(delay=0.8, keep_history=False, real_time=False):
     """
     This function plays the entire game, and views it in a nice animated way.
 
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('player', nargs='+', help="Path to a folder containing a bot.py file.")
     parser.add_argument('--raw-text', action='store_true', help="Makes playback text-only by disabling colors and cursor movements.")
-    parser.add_argument('--delay', default=0.8, help="Playback delay in seconds.")
+    parser.add_argument('--delay', default=0.4, help="Playback delay in seconds.")
     parser.add_argument('--debug', default='true', choices=('true','false'), help="In debug mode (defaults to true), bot logs and additional information are displayed.")
     parser.add_argument('--max-rounds', default=GameConstants.MAX_ROUNDS, type=int, help="Override the max number of rounds for faster games.")
     parser.add_argument('--board-size', default=GameConstants.BOARD_SIZE, type=int, help="Override the board size for faster games.")

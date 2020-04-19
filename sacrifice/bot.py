@@ -15,7 +15,7 @@ def ilog(str):
         log(str)
 
 
-def check_space_wrapper(r, c, board_size):
+def check_space_wrapper(r, c):
     # check space, except doesn't hit you with game errors
     if r < 0 or c < 0 or c >= board_size or r >= board_size:
         return False
@@ -57,7 +57,7 @@ class Pawn:
 
 
     def check_piece_relative(self, rdiff, cdiff):
-        return check_space_wrapper(self.row + rdiff, self.col + cdiff * self.forward, self.board_size)
+        return check_space_wrapper(self.row + rdiff, self.col + cdiff * self.forward)
 
 
     def run(self):
@@ -90,7 +90,7 @@ class Pawn:
 
 
     def tryforward(self):
-        if self.nextrow != -1 and self.nextrow != board_size and not check_space_wrapper(self.nextrow, self.col, self.board_size):
+        if self.nextrow != -1 and self.nextrow != board_size and not check_space_wrapper(self.nextrow, self.col):
             move_forward()
             dlog('Moved forward!')
 
@@ -99,11 +99,14 @@ class Pawn:
         attackers = 0
         defenders = 0
         for cdiff in [-1, 1]:
-            if check_space_wrapper(self.nextrow + self.forward, self.col + cdiff, board_size) == opp_team: # attacker positions
+            if check_space_wrapper(self.nextrow + self.forward, self.col + cdiff) == opp_team: # attacker positions
                 attackers += 1
-            if check_space_wrapper(self.nextrow - self.forward, self.col + cdiff, board_size) == team: # defending positions
+            if check_space_wrapper(self.nextrow - self.forward, self.col + cdiff) == team: # defending positions
                 defenders += 1
-        if defenders >= attackers:
+        if defenders > attackers or attackers == 0:
+            return False
+        # If you're on the opponent side of the map, go for it
+        if defenders == attackers and map_loc(self.row) > board_size // 2:
             return False
         return True
 
@@ -111,7 +114,7 @@ class Pawn:
     def trycapture(self):
         # try catpuring pieces
         for cdiff in [-1, 1]:
-            if check_space_wrapper(self.nextrow, self.col + cdiff, board_size) == opp_team: # up and right
+            if check_space_wrapper(self.nextrow, self.col + cdiff) == opp_team: # up and right
                 capture(self.nextrow, self.col + cdiff)
                 dlog('Captured at: (' + str(self.nextrow) + ', ' + str(self.col + cdiff) + ')')
                 return True
@@ -125,6 +128,13 @@ class Overlord:
         self.board_size = get_board_size()
         self.index = 0 if self.team == Team.WHITE else self.board_size - 1
         self.round_count = 0
+    
+    def safe_spawn(self, i):
+        if check_space_wrapper(self.index + self.forward, i - 1) == opp_team or check_space_wrapper(self.index + self.forward, i + 1) == opp_team:
+            return False
+        spawn(self.index, i)
+        return True
+
 
     def run(self):
         self.round_count = self.round_count + 1
@@ -146,8 +156,8 @@ class Overlord:
                 continue
             if not my_loc or spaces_in_front(my_loc, opp_loc) < 0:
                 if not check_space(self.index, i):
-                    spawn(self.index, i)
-                    return True
+                    if self.safe_spawn(i):
+                        return True
         return False
 
     def spawn_offense(self):
