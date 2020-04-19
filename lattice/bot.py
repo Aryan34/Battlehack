@@ -44,12 +44,7 @@ class Pawn:
         self.forward = 1 if self.team == Team.WHITE else -1
         self.local_, self.prev_local_ = None, None
         self.waiting = 0
-#        self.update_state()
-#        if self.col < 5:
-        if False:
-            self.type = "DEFENDER"
-        else:
-            self.type = "ATTACKER"
+        self.type = "LATTICE"
         self.board_size = get_board_size()
 
 
@@ -84,19 +79,30 @@ class Pawn:
 
     def run(self):
         self.update_state()
-        self.runlattice()
+#        log(str(self.local(-1, 0)))
+        if self.local(-1, 0) == team:
+            self.type = "ATTACK"
+        if self.type == "LATTICE":
+            self.runlattice()
+        else:
+            self.runattacker()
         bytecode = get_bytecode()
         dlog('Done! Bytecode left: ' + str(bytecode))
     
+    def runattacker(self):
+        if self.trycapture():
+            return
+        self.tryforward()
 
     def runlattice(self):
         if self.trycapture():
             return
+        if map_loc(self.row) == 0:
+            self.tryforward()
+            return
         attackers, defenders = self.danger()
-#        if attackers - defenders > 0:
         if attackers > 0:
             return
-#        self.tryforward()
         if map_loc(self.row) >= 6:
             return
         # If 2 spaces in front are open, go for it
@@ -104,8 +110,6 @@ class Pawn:
             if map_loc(self.row) >= 5:
                 return
         if self.local(1, 0) != team and self.local(2, 0) != team:
-#            if self.local(1, -1) == team or self.local(1, 1) == team:
-#                return
             self.tryforward()
 
 
@@ -167,6 +171,8 @@ class Overlord:
     def lattice_spawn(self, i):
         if self.get_pos(self.index + self.forward, i) == team:
             return False
+        if self.get_pos(self.index + self.forward * 2, i) == team:
+            return False
         return self.safe_spawn(i)
 
     def update_board(self):
@@ -179,28 +185,37 @@ class Overlord:
         self.prev_board = self.board
         self.board = board
 
+    def get_row_count(self, row, t):
+        count = 0
+        for col in range(self.board_size):
+            if check_space(row, col) == t:
+                count += 1
+        return count
+
+    def get_col_count(self, col, t):
+        count = 0
+        for row in range(self.board_size):
+            if check_space(row, col) == t:
+                count += 1
+        return count
 
     def run(self):
         self.round_count = self.round_count + 1
         self.update_board()
-        self.runlattice()
-        return
-        mycount, oppcount = 0, 0
-        for col in range(self.board_size):
-            if check_space(self.index, col) == opp_team:
-                oppcount += 1
-            if check_space(self.opp_back, col) == team:
-                mycount += 1
-        if mycount > oppcount:
-            self.runturtle()
-        else:
-            self.runregular()
+        if self.runlattice():
+            return
+        self.charge(0, 2)
+
+    def charge(self, mincol, maxcol):
+        self.spawnlow(mincol, maxcol, False)
 
     def runlattice(self):
-        if self.round_count < 10:
-            self.spawncopy()
+        if self.round_count < 20:
+            if self.spawncopy():
+                return True
         else:
-            self.spawnlow(0, self.board_size)
+            if self.spawnlow(0, self.board_size):
+                return True
 
     def check_defense(self):
         cols = []
@@ -243,9 +258,11 @@ class Overlord:
         counts.sort()
         for _, col in counts:
             if self.lattice_spawn(col):
-                return
+                return True
+        return False
 
-    def spawnlow(self, min, max):
+    def spawnlow(self, min, max, uselattice=True):
+        spawn_type = self.lattice_spawn if uselattice else self.safe_spawn
         allies = []
         for col in range(min, max):
             count = 0
@@ -256,9 +273,10 @@ class Overlord:
         allies.sort()
         for c, col in allies:
             if not check_space(self.index, col):
-                if self.lattice_spawn(col):
+                if spawn_type(col):
                     dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
-                    return
+                    return True
+        return False
 
 
 def exec_bypass():
