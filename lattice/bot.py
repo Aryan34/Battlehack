@@ -164,6 +164,11 @@ class Overlord:
         spawn(self.index, i)
         return True
 
+    def lattice_spawn(self, i):
+        if self.get_pos(self.index + self.forward, i) == team:
+            return False
+        return self.safe_spawn(i)
+
     def update_board(self):
         board = []
         for r in range(self.board_size):
@@ -237,7 +242,7 @@ class Overlord:
             counts.append((count, col))
         counts.sort()
         for _, col in counts:
-            if self.safe_spawn(col):
+            if self.lattice_spawn(col):
                 return
 
     def spawnlow(self, min, max):
@@ -251,7 +256,7 @@ class Overlord:
         allies.sort()
         for c, col in allies:
             if not check_space(self.index, col):
-                if self.safe_spawn(col):
+                if self.lattice_spawn(col):
                     dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
                     return
 
@@ -274,18 +279,3 @@ def turn():
     robot.run()
     bytecode = get_bytecode()
     dlog('Done! Bytecode left: ' + str(bytecode))
-
-"""
-        row = self.board[self.opp_back]
-        prev_row = self.board[self.opp_back]
-        for i in range(len(row)):
-            if row[i] == opp_team and prev_row[i] != opp_team:
-                if self.safe_spawn(i):
-                    return
-        for i in range(len(row)):
-            if row[i] == opp_team:
-                if self.safe_spawn(i):
-                    return
-
-#        self.spawnlow(0, self.board_size - 1)
-"""
