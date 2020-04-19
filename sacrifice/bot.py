@@ -42,7 +42,9 @@ class Pawn:
     def __init__(self):
         self.team = get_team()
         self.forward = 1 if self.team == Team.WHITE else -1
-        self.update_state()
+        self.local_, self.prev_local_ = None, None
+        self.waiting = 0
+#        self.update_state()
 #        if self.col < 5:
         if False:
             self.type = "DEFENDER"
@@ -50,10 +52,30 @@ class Pawn:
             self.type = "ATTACKER"
         self.board_size = get_board_size()
 
+
+    def calc_local(self):
+        board = []
+        for rdiff in range(-2, 3):
+            row = []
+            for cdiff in range(-2, 3):
+                row.append(self.check_piece_relative(rdiff, cdiff))
+            board.append(row)
+        return board
+
+    def local(self, a, b):
+        return self.local_[a + 2][b + 2]
+
+    def prev_local(self, a, b):
+        return self.prev_local_[a + 2][b + 2]
+
+
     def update_state(self):
         self.row, self.col = get_location()
-#         ilog(str(self.col))
         self.nextrow = self.row + self.forward
+        self.prev_local_ = self.local_
+        self.local_ = self.calc_local()
+        if self.prev_local_ is None:
+            self.prev_local_ = self.local_
 
 
     def check_piece_relative(self, rdiff, cdiff):
@@ -74,13 +96,13 @@ class Pawn:
     def runattacker(self):
         if self.trycapture():
             return
-        if self.forward_is_dangerous():
-            return
         # Only care about lattice if you're past the first 3 rows (otherwise ur wasting spawn space)
 #        if map_loc(self.row) > 3:
-        if False:   
-            self.make_lattice()
+        if self.buildup():
+            return
         else:
+            if self.forward_is_dangerous():
+                return
             self.tryforward()
 
 
@@ -93,6 +115,50 @@ class Pawn:
         # Lattice formation
         if self.check_piece_relative(0, 1) == team or self.check_piece_relative(0, -1) == team:
             self.tryforward()
+
+
+    def buildup(self):
+        if map_loc(self.row) < 8:
+            return False
+        ## ATTACKING COLS are [12, 13, 14, 15]
+        if self.col not in [12, 13, 14, 15]:
+            return False
+
+        # Go up as far as possible
+#        if not self.forward_is_dangerous():
+#            self.tryforward()
+
+        # The guy in front just moved forward (or captured) so take his spot
+        if self.prev_local(1,0) == team and self.local(1,0) == None:
+            self.tryforward()
+            return True
+
+        if self.local(-1,0) == team and self.local(-2,0) == team:
+            self.tryforward()
+            return True
+
+        return True
+        # If the guy next to you went forward, then prolly follow him
+#        if self.prev_local(0,1) == team and self.local(1,0) == None:
+#            self.tryforward()
+#            return True
+
+        # If the guy next to you went forward, then prolly follow him
+#        if self.local(1,0) == None and (self.local(1,1) == team or self.local(1,-1) == team):
+#            self.tryforward()
+#            return True
+
+
+        for rdiff in range(-2, 0):
+            for col in [12, 13, 14, 15]:
+                if abs(self.col - col) > 2:
+                    continue
+#                    return True
+                if self.check_piece_relative(rdiff, col - self.col) != team:
+                    return True
+
+        self.tryforward()
+        return True
 
 
     def tryforward(self):
@@ -140,6 +206,7 @@ class Pawn:
 class Overlord:
     def __init__(self):
         self.team = get_team()
+        log("Snakes and Ladders")
         self.forward = 1 if self.team == Team.WHITE else -1
         self.board_size = get_board_size()
         self.index = 0 if self.team == Team.WHITE else self.board_size - 1
@@ -209,8 +276,9 @@ class Overlord:
         return False
 
     def spawn_offenseA(self):
-        if self.round_count < 50:
-            self.spawnrandom()
+        if self.round_count < 30:
+            self.spawnlow(0, self.board_size - 1)
+#            self.spawnrandom()
         # Get those 4
         elif [check_space(self.opp_back, i) for i in range(0, 4)].count(team) < 2:
             self.spawnlow(0, 4)
@@ -280,3 +348,10 @@ def turn():
     robot.run()
     bytecode = get_bytecode()
     dlog('Done! Bytecode left: ' + str(bytecode))
+
+
+
+"""
+for i in range(70):
+    step()
+"""
