@@ -57,7 +57,7 @@ class Pawn:
 
 
     def check_piece_relative(self, rdiff, cdiff):
-        return check_space_wrapper(self.row + rdiff, self.col + cdiff * self.forward)
+        return check_space_wrapper(self.row + rdiff * self.forward, self.col + cdiff)
 
 
     def run(self):
@@ -74,18 +74,24 @@ class Pawn:
     def runattacker(self):
         if self.trycapture():
             return
-        if not self.forward_is_dangerous():
+        if self.forward_is_dangerous():
+            return
+        # Only care about lattice if you're past the first 3 rows (otherwise ur wasting spawn space)
+#        if map_loc(self.row) > 3:
+        if False:   
+            self.make_lattice()
+        else:
             self.tryforward()
 
 
     def rundefender(self):
         if self.trycapture():
             return
-        if self.check_piece_relative(0, 1) == opp_team:
+        if self.check_piece_relative(1, 0) == opp_team:
             # Don't let the guy in front of you cross you gdi
             return
         # Lattice formation
-        if self.check_piece_relative(1, 0) == team or self.check_piece_relative(-1, 0) == team:
+        if self.check_piece_relative(0, 1) == team or self.check_piece_relative(0, -1) == team:
             self.tryforward()
 
 
@@ -93,6 +99,14 @@ class Pawn:
         if self.nextrow != -1 and self.nextrow != board_size and not check_space_wrapper(self.nextrow, self.col):
             move_forward()
             dlog('Moved forward!')
+
+
+    def make_lattice(self):
+        if self.check_piece_relative(2, 0) == team:
+            # Don't wanna double up
+            return
+        if self.check_piece_relative(0, 1) == team or self.check_piece_relative(0, -1) == team:
+            self.tryforward()
 
 
     def forward_is_dangerous(self):
@@ -106,7 +120,7 @@ class Pawn:
         if defenders > attackers or attackers == 0:
             return False
         # If you're on the opponent side of the map, go for it
-        if defenders == attackers and map_loc(self.row) > board_size // 2:
+        if defenders == attackers and map_loc(self.row) > 3:
             return False
         return True
 
@@ -127,6 +141,7 @@ class Overlord:
         self.forward = 1 if self.team == Team.WHITE else -1
         self.board_size = get_board_size()
         self.index = 0 if self.team == Team.WHITE else self.board_size - 1
+        self.opp_back = self.board_size - 1 - self.index
         self.round_count = 0
     
     def safe_spawn(self, i):
@@ -161,10 +176,33 @@ class Overlord:
         return False
 
     def spawn_offense(self):
-        self.spawnrandom()
+        if self.round_count < 50:
+            self.spawnrandom()
+        # Get those 4
+        elif [check_space(self.opp_back, i) for i in range(0, 4)].count(team) < 3:
+            self.spawnlow(0, 4)
+        elif [check_space(self.opp_back, i) for i in range(4, 8)].count(team) < 3:
+            self.spawnlow(4, 8)
+        elif [check_space(self.opp_back, i) for i in range(8, 12)].count(team) < 3:
+            self.spawnlow(8, 12)
+        else:
+            self.spawnlow(12, 16)
 
-    def spawnarrow(self):
-        pass
+    def spawnlow(self, min, max):
+        allies = []
+        for col in range(min, max):
+            count = 0
+            for i in range(board_size):
+                if check_space(i, col) == team:
+                    count += 1
+            allies.append((count, col))
+        allies = sorted(allies)
+        for c, col in allies:
+            if not check_space(self.index, col):
+                spawn(self.index, col)
+                dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
+                return
+
 
     def spawnrandom(self, min=None, max=None):
         if min is None: min = 0

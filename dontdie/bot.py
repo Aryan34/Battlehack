@@ -57,7 +57,7 @@ class Pawn:
 
 
     def check_piece_relative(self, rdiff, cdiff):
-        return check_space_wrapper(self.row + rdiff, self.col + cdiff * self.forward, self.board_size)
+        return check_space_wrapper(self.row + rdiff * self.forward, self.col + cdiff)
 
 
     def run(self):
