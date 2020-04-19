@@ -97,7 +97,12 @@ class Pawn:
         if attackers > 0:
             return
 #        self.tryforward()
+        if map_loc(self.row) >= 6:
+            return
         # If 2 spaces in front are open, go for it
+        if self.local(1, 1) == team or self.local(1, -1) == team:
+            if map_loc(self.row) >= 5:
+                return
         if self.local(1, 0) != team and self.local(2, 0) != team:
 #            if self.local(1, -1) == team or self.local(1, 1) == team:
 #                return
