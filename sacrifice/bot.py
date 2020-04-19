@@ -168,19 +168,7 @@ class Overlord:
 
     def runturtle(self):
         self.check_defense()
-        cols = []
-        for col in range(self.board_size):
-            count = 0
-            for row in range(self.board_size):
-                if check_space(row, col) == team:
-                    count += 1
-            cols.append((count, col))
-        cols.sort()
-        for _, col in cols:
-            if not check_space(self.index, i):
-                if self.safe_spawn(i):
-                    return
-
+        self.spawnlow(0, board_size)
 
     def runregular(self):
         if self.check_defense():
