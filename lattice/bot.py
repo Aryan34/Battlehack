@@ -202,9 +202,14 @@ class Overlord:
     def run(self):
         self.round_count = self.round_count + 1
         self.update_board()
+        if self.rundefense():
+            return
         if self.runlattice():
             return
-        self.charge(0, 2)
+        if team == Team.BLACK:
+            self.charge(0, 2)
+        else:
+            self.charge(14, 16)
 
     def charge(self, mincol, maxcol):
         self.spawnlow(mincol, maxcol, False)
@@ -217,13 +222,22 @@ class Overlord:
             if self.spawnlow(0, self.board_size):
                 return True
 
+    def rundefense(self):
+        if self.check_defense():
+            return True
+        for col in range(self.board_size):
+            if self.get_col_count(col, team) * 2 < self.get_col_count(col, opp_team):
+                if self.safe_spawn(col):
+                    return True
+        return False
+
     def check_defense(self):
         cols = []
         for i in range(self.board_size):
             opp_locs, my_locs = [], []
             for j in range(self.board_size // 2):
                 j = map_loc(j)
-                space = check_space(j, i)
+                space = self.get_pos(j, i)
                 if space == opp_team:
                     opp_locs.append(j)
                 elif space == team:
