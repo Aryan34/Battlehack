@@ -298,5 +298,6 @@ def turn():
 #    __globals__
 
     robot.run()
-    bytecode = get_bytecode()
-    log('Done! Bytecode left: ' + str(bytecode))
+    if get_type() == RobotType.OVERLORD:
+        bytecode = get_bytecode()
+        log('Done! Bytecode left: ' + str(bytecode))

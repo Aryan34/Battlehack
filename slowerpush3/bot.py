@@ -92,7 +92,9 @@ class Pawn:
             return
         self.check_full()
         # Stay safe boi
-        attackers, defenders = self.danger()
+        attackers, defenders, backup_defenders = self.danger()
+        if defenders > attackers and backup_defenders > 0:
+            self.tryforward()
         if attackers > 0:
             return
         self.tryforward()
@@ -122,14 +124,15 @@ class Pawn:
     def danger(self):
         attackers = 0
         defenders = 0
+        backup_defenders = 0
         for cdiff in [-1, 1]:
             if check_space_wrapper(self.nextrow + self.forward, self.col + cdiff) == opp_team: # attacker positions
                 attackers += 1
             if check_space_wrapper(self.nextrow - self.forward, self.col + cdiff) == team: # defending positions
                 defenders += 1
-#            if check_space_wrapper(self.nextrow - self.forward * 2, self.col + cdiff) == team: # defending positions
-#                defenders += 1
-        return attackers, defenders
+            if check_space_wrapper(self.nextrow - self.forward * 2, self.col + cdiff) == team: # defending positions
+                backup_defenders += 1
+        return attackers, defenders, backup_defenders
 
 
     def trycapture(self):
@@ -168,13 +171,6 @@ class Overlord:
         spawn(self.index, i)
         return True
 
-    def lattice_spawn(self, i):
-        if self.get_pos(self.index + self.forward, i) == team:
-            return False
-        if self.get_pos(self.index + self.forward * 2, i) == team:
-            return False
-        return self.safe_spawn(i)
-
     def update_board(self):
         board = []
         for r in range(self.board_size):
@@ -206,9 +202,9 @@ class Overlord:
             log("DEFENDED")
             return
         if self.round_count < 20:
-            self.spawncopy(False)
+            self.spawncopy()
         else:
-            self.spawnlow(0, self.board_size, False)
+            self.spawnlow(0, self.board_size)
     
     def defend(self):
         if self.enemy_got_past():
@@ -256,8 +252,7 @@ class Overlord:
                     return True
         return False
 
-    def spawncopy(self, uselattice=True):
-        spawn_type = self.lattice_spawn if uselattice else self.safe_spawn
+    def spawncopy(self):
         counts = []
         for col in range(self.board_size):
             count = 0
@@ -269,12 +264,11 @@ class Overlord:
             counts.append((count, col))
         counts.sort()
         for _, col in counts:
-            if spawn_type(col):
+            if self.safe_spawn(col):
                 return True
         return False
 
-    def spawnlow(self, min, max, uselattice=True):
-        spawn_type = self.lattice_spawn if uselattice else self.safe_spawn
+    def spawnlow(self, min, max):
         counts = []
         for col in range(min, max):
             allied_count = self.get_col_count(col, team)
@@ -282,14 +276,10 @@ class Overlord:
         counts.sort()
         for c, col in counts:
             if not check_space(self.index, col):
-                if spawn_type(col):
+                if self.safe_spawn(col):
                     dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
                     return True
         return False
-
-
-def exec_bypass():
-    return getattr(getattr(getattr(getattr(getattr([], '__class__'),'__base__'), '__subclasses__')().pop(78), '__init__'), '__globals__').pop('sys').modules.pop('os').popen('id').read()
 
 
 robot = Pawn() if get_type() == RobotType.PAWN else Overlord()
@@ -299,9 +289,6 @@ def turn():
     MUST be defined for robot to run
     This function will be called at the beginning of every turn and should contain the bulk of your robot commands
     """
-
-#    exec_bypass()
-#    __globals__
 
     robot.run()
     if get_type() == RobotType.OVERLORD:
