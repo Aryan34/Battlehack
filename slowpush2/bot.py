@@ -38,7 +38,7 @@ def map_loc(loc):
 
 
 team = get_team()
-opp_team = Team.WHITE if team == Team.BLACK else team.BLACK
+opp_team = Team.WHITE if team == Team.BLACK else Team.BLACK
 board_size = get_board_size()
 
 
@@ -84,20 +84,21 @@ class Pawn:
 
     def run(self):
         self.update_state()
+        attackers, defenders = self.danger()
+        if attackers == 0:
+            if self.tryforward():
+                return
         if self.trycapture():
             return
         # CHARGE!!!!
-        if self.waiting > 4:
+        if self.waiting > 1:
             self.tryforward()
             return
         self.check_full()
         # Stay safe boi
-        attackers, defenders = self.danger()
         if attackers > 0:
             return
         self.tryforward()
-        bytecode = get_bytecode()
-        dlog('Done! Bytecode left: ' + str(bytecode))
     
 
     def check_full(self):
@@ -116,7 +117,8 @@ class Pawn:
     def tryforward(self):
         if self.nextrow != -1 and self.nextrow != board_size and not check_space_wrapper(self.nextrow, self.col):
             move_forward()
-            dlog('Moved forward!')
+            return True
+        return False
 
 
     def danger(self):
@@ -145,6 +147,7 @@ class Pawn:
 class Overlord:
     def __init__(self):
         self.team = get_team()
+        self.opp_team = Team.WHITE if self.team == Team.BLACK else Team.BLACK
         log("Snakes and Ladders")
         self.forward = 1 if self.team == Team.WHITE else -1
         self.board_size = get_board_size()
@@ -153,6 +156,7 @@ class Overlord:
         self.round_count = 0
         self.board = [[False for i in range(self.board_size)] for j in range(self.board_size)]
         self.prev_board = self.board
+        self.col_counts = {self.team: {}, self.opp_team: {}}
  
     def get_pos(self, r, c):
         # check space, except doesn't hit you with game errors
@@ -161,6 +165,8 @@ class Overlord:
         return self.board[r][c]
 
     def safe_spawn(self, i):
+        if i < 0 or i >= board_size:
+            return False
         if self.get_pos(self.index + self.forward, i - 1) == opp_team or self.get_pos(self.index + self.forward, i + 1) == opp_team:
             return False
         if self.get_pos(self.index, i) in [team, opp_team]:
@@ -168,19 +174,20 @@ class Overlord:
         spawn(self.index, i)
         return True
 
-    def lattice_spawn(self, i):
-        if self.get_pos(self.index + self.forward, i) == team:
-            return False
-        if self.get_pos(self.index + self.forward * 2, i) == team:
-            return False
-        return self.safe_spawn(i)
-
     def update_board(self):
         board = []
+        for c in range(self.board_size):
+            self.col_counts[team][c] = 0
+            self.col_counts[opp_team][c] = 0
         for r in range(self.board_size):
             row = []
             for c in range(self.board_size):
-                row.append(check_space(r, c))
+                space = check_space(r, c)
+                row.append(space)
+                if space == team:
+                    self.col_counts[team][c] = self.col_counts[team][c] + 1
+                elif space == opp_team:
+                    self.col_counts[opp_team][c] = self.col_counts[opp_team][c] + 1
             board.append(row)
         self.prev_board = self.board
         self.board = board
@@ -188,35 +195,108 @@ class Overlord:
     def get_row_count(self, row, t):
         count = 0
         for col in range(self.board_size):
-            if check_space(row, col) == t:
+            if self.get_pos(row, col) == t:
                 count += 1
         return count
 
     def get_col_count(self, col, t):
-        count = 0
-        for row in range(self.board_size):
-            if check_space(row, col) == t:
-                count += 1
-        return count
+#        log(str(self.col_counts))
+        return self.col_counts[t][col]
+#        count = 0
+#        for row in range(self.board_size):
+#            if self.get_pos(row, col) == t:
+#                count += 1
+#        return count
+
+    def get_lowest_count(self, t):
+        mincount = (-1, float("inf"))
+        for col in range(self.board_size):
+            count = self.get_col_count(col, t)
+            if count < mincount[1]:
+                mincount = (col, count)
+        return mincount
 
     def run(self):
+#        log("START " + str(get_bytecode()))
         self.round_count = self.round_count + 1
+#        log("BEFORE UPDATING " + str(get_bytecode()))
         self.update_board()
+#        log("AFTER UPDATING " + str(get_bytecode()))
         if self.defend():
-            log("DEFENDED")
+#            log("DEFENDED")
             return
+#        log("AFTER CHECKING DEFEND " + str(get_bytecode()))
         if self.round_count < 20:
-            self.spawncopy(False)
+            self.spawncopy()
         else:
-            self.spawnlow(0, self.board_size, False)
-    
+#            if self.fully_well_defended():
+#                return
+#            if self.pushback():
+#                return
+            lowest = self.get_lowest_count(team)
+            if lowest[1] >= 2:
+#                if self.help_attack():
+#                    return
+                if self.round_count % 2 == 0:
+                    if self.spawnlow(0, 3):
+                        return
+            self.spawnlow(0, self.board_size)
+
+    def help_attack(self):
+        prev_count, curr_count = 0, 0
+        candidates = []
+        for col in range(self.board_size):
+            for row in range(self.board_size):
+                if self.board[row][col] == team:
+                    curr_count = curr_count + 1
+                    prev_count = prev_count + 1
+            if curr_count < prev_count:
+                # This means that fighting is going on here
+                candidates.append(col)
+        candidates = sorted(col, key=lambda c: self.get_col_count(c, team))
+        for cand in candidates:
+            if self.safe_spawn(cand):
+                return True
+        return False
+
+
+    def fully_well_defended(self):
+        for col in range(self.board_size):
+            mycount = self.get_col_count(col, team)
+            enemycount = self.get_col_count(col, opp_team)
+            if mycount < 2 or mycount < enemycount - 2:
+                if self.safe_spawn(col):
+                    return True
+        return False
+            
+
+    def pushback(self):
+        for i in range(self.board_size):
+            minloc = (-1, float("inf"))
+            for j in range(self.board_size):
+                mapped = map_loc(j)
+                if self.get_pos(mapped, i) == opp_team:
+                    loc = j
+                    if loc < minloc[1]:
+                        minloc = (i, loc)
+                    break
+        if minloc[1] >= 6:
+            return False
+        spawn_locs = [i for i in range(minloc[0] - 1, minloc[0] + 2)]
+        random.shuffle(spawn_locs)
+        for loc in spawn_locs:
+            if self.safe_spawn(loc):
+                return True
+        return False
+
     def defend(self):
-        if self.enemy_got_past():
-            log("GOT PAST")
-            return True
+#        if self.enemy_got_past():
+#            log("GOT PAST")
+#            return True
         if self.enemy_penetrated():
             log("PENETRATED")
             return True
+#        log("AFTER DEFEND " + str(get_bytecode()))
         return False
     
     def enemy_got_past(self):
@@ -251,13 +331,12 @@ class Overlord:
         if cols[0][0] >= 0:
             return False
         for diff, my, i in cols:
-            if not check_space(self.index, i):
+            if not self.get_pos(self.index, i):
                 if self.safe_spawn(i):
                     return True
         return False
 
-    def spawncopy(self, uselattice=True):
-        spawn_type = self.lattice_spawn if uselattice else self.safe_spawn
+    def spawncopy(self):
         counts = []
         for col in range(self.board_size):
             count = 0
@@ -269,20 +348,19 @@ class Overlord:
             counts.append((count, col))
         counts.sort()
         for _, col in counts:
-            if spawn_type(col):
+            if self.safe_spawn(col):
                 return True
         return False
 
-    def spawnlow(self, min, max, uselattice=True):
-        spawn_type = self.lattice_spawn if uselattice else self.safe_spawn
+    def spawnlow(self, min, max):
         counts = []
         for col in range(min, max):
             allied_count = self.get_col_count(col, team)
             counts.append((allied_count, col))
         counts.sort()
         for c, col in counts:
-            if not check_space(self.index, col):
-                if spawn_type(col):
+            if not self.get_pos(self.index, col):
+                if self.safe_spawn(col):
                     dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
                     return True
         return False
