@@ -148,8 +148,6 @@ class Overlord:
     def spawn_offense(self):
         self.spawnrandom()
 
-    def spawnarrow(self):
-        pass
 
     def spawnrandom(self, min=None, max=None):
         if min is None: min = 0

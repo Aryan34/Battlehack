@@ -102,7 +102,7 @@ class Pawn:
 
     def check_full(self):
         for rdiff in range(-2, 1):
-            for cdiff in range(-1, 2):
+            for cdiff in range(-2, 3):
                 if not inbounds(self.row + rdiff, self.col + cdiff):
                     continue
                 if self.local(rdiff, cdiff) == team:
