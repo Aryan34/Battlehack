@@ -112,7 +112,12 @@ class Pawn:
                 self.waiting = 0
                 return
         self.waiting = self.waiting + 1
-        return
+
+#        for cdiff in [-2, -1, 1, 2]:
+#            if self.prev_local(1, cdiff) != self.local(1, cdiff):
+#                log("I DID A THING")
+#                self.waiting = 0
+#        return
 
 
     def tryforward(self):
@@ -137,12 +142,30 @@ class Pawn:
 
     def trycapture(self):
         # try catpuring pieces
+        cancapture = []
         for cdiff in [-1, 1]:
             if check_space_wrapper(self.nextrow, self.col + cdiff) == opp_team: # up and right
-                capture(self.nextrow, self.col + cdiff)
-                dlog('Captured at: (' + str(self.nextrow) + ', ' + str(self.col + cdiff) + ')')
+                cancapture.append(cdiff)
+        if len(cancapture) == 0:
+            return False
+        elif len(cancapture) == 1:
+            capture(self.nextrow, self.col + cancapture[0])
+            return True
+        else:
+            if self.local(0, 2) == team:
+                capture(self.nextrow, self.col + 1)
                 return True
-        return False
+            elif self.local(0, -2):
+                capture(self.nextrow, self.col - 1)
+                return True
+            if self.local(2, 2) != opp_team:
+                capture(self.nextrow, self.col + 1)
+                return True
+            elif self.local(-2, 2) != opp_team:
+                capture(self.nextrow, self.col - 1)
+                return True
+            capture(self.nextrow, self.col - 1)
+            return True
 
 
 class Overlord:
@@ -204,6 +227,8 @@ class Overlord:
         if self.round_count < 20:
             self.spawncopy()
         else:
+            log("SPAWNING LOW")
+#            self.spawnundefended()
             self.spawnlow(0, self.board_size)
     
     def defend(self):
@@ -251,19 +276,51 @@ class Overlord:
                 if self.safe_spawn(i):
                     return True
         return False
+    
+    def spawnundefended(self):
+        furthest = []
+        for col in range(self.board_size):
+            f = -1
+            for r in range(self.board_size):
+                j = map_loc(r)
+                if self.get_pos(j, col) == opp_team:
+                    f = j - 1
+                    break
+            furthest.append(f, col)
+        defenders = []
+        for f, col in furthest:
+#            num_attackers, num_defenders = self.get_attackers_defenders(f)
+#            defenders.append((num_defenders - num_attackers, col))
+            dL, dR = self.get_attackers_defenders(f)
+            defenders.append()
+
+    def get_attackers_defenders(self, row, col):
+        dL, dR = 0, 0
+#        for r in range(row + self.forward, map_loc(self.board_size), self.forward):
+        for r in range(row - self.forward, map_loc(-1), -self.forward):
+            if self.get_pos(r, col - 1) == team:
+                dL += 1
+            else:
+                break
+        for r in range(row - self.forward, map_loc(-1), -self.forward):
+            if self.get_pos(r, col - 1) == opp_team:
+                dR += 1
+            else:
+                break
+
+        return dL, dR
+
+
+
 
     def spawncopy(self):
         counts = []
         for col in range(self.board_size):
-            count = 0
-            for row in range(self.board_size):
-                if self.get_pos(row, col) == opp_team:
-                    count = count - 1
-                elif self.get_pos(row, col) == team:
-                    count = count + 1
-            counts.append((count, col))
+            allied = self.get_col_count(col, team)
+            enemy = self.get_col_count(col, opp_team)
+            counts.append((allied - enemy, abs(col - 8), col))
         counts.sort()
-        for _, col in counts:
+        for _, _, col in counts:
             if self.safe_spawn(col):
                 return True
         return False
@@ -272,9 +329,9 @@ class Overlord:
         counts = []
         for col in range(min, max):
             allied_count = self.get_col_count(col, team)
-            counts.append((allied_count, col))
+            counts.append((allied_count, abs(col - 8), col))
         counts.sort()
-        for c, col in counts:
+        for c, _, col in counts:
             if not check_space(self.index, col):
                 if self.safe_spawn(col):
                     dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
