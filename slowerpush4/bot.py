@@ -4,6 +4,7 @@ from battlehack20.stubs import *
 # TODO: If neighbor or neighbor's neighbor just pushed, then wait a bit
 # TODO: Overlord spam a couple columns near the end (to try and win tiebreaker)
 
+GAME_MAX = 200
 
 DEBUG = 0
 def dlog(str):
@@ -233,8 +234,12 @@ class Overlord:
         else:
             log("SPAWNING LOW")
 #            self.spawnundefended()
-            if self.round_count % 50 < 15 or self.round_count > 480:
-                self.spawnattack()
+#            if self.round_count % 50 < 15 or self.round_count > 480:
+            if self.round_count > GAME_MAX - 40:
+                if self.round_count % 2 == 0:
+                    self.spawnattack()
+                else:
+                    self.spawnlow(0, self.board_size)
             else:
                 self.attack_column = None
                 self.spawnlow(0, self.board_size)
