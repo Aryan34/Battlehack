@@ -5,7 +5,6 @@ from battlehack20.stubs import *
 # TODO: Overlord spam a couple columns near the end (to try and win tiebreaker)
 
 GAME_MAX = 250
-FARTHEST_ROW = 11
 
 DEBUG = 0
 def dlog(str):
@@ -83,20 +82,20 @@ class Pawn:
     def check_piece_relative(self, rdiff, cdiff):
         return check_space_wrapper(self.row + rdiff * self.forward, self.col + cdiff)
 
-
     def run(self):
         self.update_state()
         if self.trycapture():
             return
         # CHARGE!!!!
-#        timer = 16 - map_loc(self.row)
-        if self.waiting > 4 and map_loc(self.row) < FARTHEST_ROW:
+        if self.witness_push() and self.waiting > 0:
+            self.waiting = 0
+        if self.waiting > 15:
             self.tryforward()
             return
-#        self.check_full()
+        self.check_full()
         # Stay safe boi
         attackers, defenders, backup_defenders = self.danger()
-        if defenders > attackers and backup_defenders > 0 and map_loc(self.row) < FARTHEST_ROW:
+        if defenders > attackers and backup_defenders > 0:
 #        if defenders > attackers:
             self.tryforward()
         if attackers > 0:
@@ -107,6 +106,12 @@ class Pawn:
         bytecode = get_bytecode()
         dlog('Done! Bytecode left: ' + str(bytecode))
     
+
+    def witness_push(self):
+        for cdiff in [-2, 2]:
+            if self.prev_local(1, cdiff) != team and self.local(1, cdiff) == team:
+                return True
+        return False
 
     def check_full(self):
         for rdiff in range(-2, 1):
@@ -365,11 +370,7 @@ class Overlord:
         if enemy > 0 and allied == 0:
             return -100 * enemy
         if enemy == 0 and allied == 0:
-            if col != 0 and self.get_col_count(col - 1, opp_team) != 0:
-                return 20
-            if col != self.board_size - 1 and self.get_col_count(col + 1, opp_team) != 0:
-                return 20
-            return -20
+            return -20 if col % 2 == 0 else 20
         if allied > 0:
             return 100 * allied
 

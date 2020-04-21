@@ -90,10 +90,10 @@ class Pawn:
             return
         # CHARGE!!!!
 #        timer = 16 - map_loc(self.row)
-        if self.waiting > 4 and map_loc(self.row) < FARTHEST_ROW:
+        if self.waiting > 0 and map_loc(self.row) < FARTHEST_ROW:
             self.tryforward()
             return
-#        self.check_full()
+        self.check_full()
         # Stay safe boi
         attackers, defenders, backup_defenders = self.danger()
         if defenders > attackers and backup_defenders > 0 and map_loc(self.row) < FARTHEST_ROW:
@@ -109,15 +109,18 @@ class Pawn:
     
 
     def check_full(self):
+        count = 0
         for rdiff in range(-2, 1):
             for cdiff in range(-2, 3):
                 if not inbounds(self.row + rdiff, self.col + cdiff):
                     continue
                 if self.local(rdiff, cdiff) == team:
+                    count += 1
                     continue
-                self.waiting = 0
-                return
-        self.waiting = self.waiting + 1
+        if count > 5:
+            self.waiting = self.waiting + 1
+        else:
+            self.waiting = 0
 
 
     def is_defending(self):
@@ -233,6 +236,8 @@ class Overlord:
         self.board = board
 
     def get_row_count(self, row, t):
+        if col < 0 or col >= self.board_size:
+            return 0
         count = 0
         for col in range(self.board_size):
             if self.get_pos(row, col) == t:
@@ -240,6 +245,8 @@ class Overlord:
         return count
 
     def get_col_count(self, col, t):
+        if col < 0 or col >= self.board_size:
+            return 0
         count = 0
         for row in range(self.board_size):
             if check_space(row, col) == t:
@@ -272,7 +279,8 @@ class Overlord:
                     self.spawnheuristic(self.low_heuristic)
             else:
                 self.attack_column = None
-                self.spawnheuristic(self.low_heuristic)
+                self.spawnheuristic(self.high_heuristic)
+#                self.spawnheuristic(self.low_heuristic)
     
 
     def spawnattack(self):
@@ -378,6 +386,14 @@ class Overlord:
         allied_count = self.get_col_count(col, team)
         enemy_count = self.get_col_count(col, opp_team)
         return allied_count * 100 - enemy_count * 50 + abs(col - 8)
+
+    def high_heuristic(self, col):
+        counts = []
+        attacking = self.get_col_count(col - 1, opp_team) + self.get_col_count(col + 1, opp_team)
+        defending = self.get_col_count(col - 1, team) + self.get_col_count(col + 1, team)
+        allied = self.get_col_count(col, team)
+        enemy = self.get_col_count(col, opp_team)
+        return (defending * 1.5 + allied) * -100 + (attacking * 1.5 + enemy) * 50 + abs(col - 8)
 
 
 robot = Pawn() if get_type() == RobotType.PAWN else Overlord()
