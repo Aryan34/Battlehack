@@ -99,6 +99,8 @@ class Pawn:
             self.tryforward()
         if attackers > 0:
             return
+#        if self.is_defending():
+#            return
         self.tryforward()
         bytecode = get_bytecode()
         dlog('Done! Bytecode left: ' + str(bytecode))
@@ -115,6 +117,14 @@ class Pawn:
                 return
         self.waiting = self.waiting + 1
 
+
+    def is_defending(self):
+        for cdiff in [-1, 1]:
+            if self.local(1, cdiff) == team:
+                for cdiff2 in [-1, 1]:
+                    if self.local(2, cdiff + cdiff2) == opp_team:
+                        return True
+        return False
 
     def tryforward(self):
         if self.nextrow != -1 and self.nextrow != board_size and not check_space_wrapper(self.nextrow, self.col):
@@ -138,6 +148,13 @@ class Pawn:
 
     def trycapture(self):
         # try catpuring pieces
+        for cdiff in [-1, 1]:
+            if self.local(1, cdiff) == opp_team:
+                capture(self.nextrow, self.col + cdiff)
+                return True
+        return False
+
+        """
         cancapture = []
         for cdiff in [-1, 1]:
             if check_space_wrapper(self.nextrow, self.col + cdiff) == opp_team: # up and right
@@ -162,6 +179,7 @@ class Pawn:
                 return True
             capture(self.nextrow, self.col - 1)
             return True
+        """
 
 
 class Overlord:
@@ -237,20 +255,22 @@ class Overlord:
         else:
             log("SPAWNING LOW")
 #            if self.round_count % 50 < 15 or self.round_count > 480:
-            if self.round_count > GAME_MAX / 2:
+#            if self.round_count > GAME_MAX / 2:
+            if False:
                 if self.round_count % 10 < 5:
                     self.spawnattack()
                 else:
-                    self.spawnlow(0, self.board_size)
+                    self.spawnheuristic(self.low_heuristic)
             else:
                 self.attack_column = None
-                self.spawnlow(0, self.board_size)
+                self.spawnheuristic(self.low_heuristic)
     
+
     def spawnattack(self):
         if self.attack_column is None:
             self.decide_attack_column()
         for cdiff in range(2, 16):
-            if self.spawnlow(self.attack_column - cdiff, self.attack_column + cdiff + 1):
+            if self.spawnheuristic(self.low_heuristic, self.attack_column - cdiff, self.attack_column + cdiff + 1):
                 return
 
 
@@ -318,13 +338,17 @@ class Overlord:
                 if self.safe_spawn(i):
                     return True
         return False
-    
-    def helppush(self):
-        groups = []
-        for col in range(self.board_size):
-            for row in range(self.board_size):
-                pass
 
+    def spawnheuristic(self, method, min=None, max=None):
+        if min is None: min = 0
+        if max is None: max = self.board_size
+        # Spawns in the column w/ the lowest heuristic that's spawnable
+        cols = [(method(i), i) for i in range(min, max)]
+        cols.sort()
+        for h, col in cols:
+            if self.safe_spawn(col):
+                return True
+        return False        
 
     def spawncopy(self):
         counts = []
@@ -338,19 +362,11 @@ class Overlord:
                 return True
         return False
 
-    def spawnlow(self, min, max):
+    def low_heuristic(self, col):
         counts = []
-        for col in range(min, max):
-            allied_count = self.get_col_count(col, team)
-            enemy_count = self.get_col_count(col, team)
-            counts.append((allied_count, allied_count - enemy_count, abs(col - 8), col))
-        counts.sort()
-        for c, _, _, col in counts:
-            if not check_space(self.index, col):
-                if self.safe_spawn(col):
-                    dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
-                    return True
-        return False
+        allied_count = self.get_col_count(col, team)
+        enemy_count = self.get_col_count(col, opp_team)
+        return allied_count * 100 - enemy_count * 50 + abs(col - 8)
 
 
 robot = Pawn() if get_type() == RobotType.PAWN else Overlord()

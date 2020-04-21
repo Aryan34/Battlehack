@@ -350,10 +350,9 @@ class Overlord:
             counts.append((allied_count, allied_count - enemy_count, abs(col - 8), col))
         counts.sort()
         for c, _, _, col in counts:
-            if not check_space(self.index, col):
-                if self.safe_spawn(col):
-                    dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
-                    return True
+            if self.safe_spawn(col):
+                dlog('Spawned unit at: (' + str(self.index) + ', ' + str(col) + ')')
+                return True
         return False
 
 
