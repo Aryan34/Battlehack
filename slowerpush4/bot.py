@@ -115,12 +115,6 @@ class Pawn:
                 return
         self.waiting = self.waiting + 1
 
-#        for cdiff in [-2, -1, 1, 2]:
-#            if self.prev_local(1, cdiff) != self.local(1, cdiff):
-#                log("I DID A THING")
-#                self.waiting = 0
-#        return
-
 
     def tryforward(self):
         if self.nextrow != -1 and self.nextrow != board_size and not check_space_wrapper(self.nextrow, self.col):

@@ -87,15 +87,15 @@ class Pawn:
         self.update_state()
         if self.trycapture():
             return
+        attackers, defenders, backup_defenders = self.danger()
         # CHARGE!!!!
+#        if self.waiting > 0 and defenders > attackers:
 #        if self.waiting > 4:
 #            self.tryforward()
 #            return
-        self.check_full()
+#        self.check_full()
         # Stay safe boi
-        attackers, defenders, backup_defenders = self.danger()
         if defenders > attackers and backup_defenders > 0:
-    #        if defenders > attackers:
             self.tryforward()
         if attackers > 0:
             return
@@ -114,12 +114,6 @@ class Pawn:
                 self.waiting = 0
                 return
         self.waiting = self.waiting + 1
-
-#        for cdiff in [-2, -1, 1, 2]:
-#            if self.prev_local(1, cdiff) != self.local(1, cdiff):
-#                log("I DID A THING")
-#                self.waiting = 0
-#        return
 
 
     def tryforward(self):
@@ -144,74 +138,34 @@ class Pawn:
 
     def trycapture(self):
         # try catpuring pieces
-
-        """
-        my_attackers: number of attackers on me (direct and knight)
-        my_defenders: number of defenders on me (direct and knight)
-        """
-
-        caps = []
         for cdiff in [-1, 1]:
             if self.local(1, cdiff) == opp_team:
                 capture(self.nextrow, self.col + cdiff)
                 return True
-                cap_defenders = 0
-                for cd in [-1, 1]:
-                    if self.local(2, cdiff + cd) == opp_team:
-                        cap_defenders += 1
-                cap_attackers = 1
-                if self.local(0, cdiff * 2) == team:
-                    cap_attackers += 1
-
-                # If you got more boys on it than they have defending, then yeet it
-                if cap_attackers > cap_defenders:
-                    capture(self.nextrow, self.col + cdiff)
-                    return True
-
-                caps.append((cap_attackers, cap_defenders, self.col + cdiff))
-
-        if len(caps) == 0:
-            return False
-
-        behind = self.local(-1, 0) == team
-        direct_attackers = len(caps)
-        knight_attackers = 0
-        for cdiff in [-1, 1]:
-            if self.local(2, cdiff) == opp_team:
-                knight_attackers = knight_attackers + 1
-        direct_defenders, knight_defenders = 0, 0
-        for cdiff in [-1, 1]:
-            if self.local(-1, cdiff) == team:
-                direct_defenders += 1
-            elif self.local(-2, cdiff) == team:
-                knight_defenders += 1
-
-        if direct_defenders > direct_attackers:
-            return False
-            
-        if direct_attackers > direct_defenders:
-            if len(caps) == 1:
-                capture(self.nextrow, caps[0][2])
-                return True
-            defended = self.col - 1 if self.local(-1, -1) == team else self.col + 1
-            capture(self.nextrow, defended)
-            return True
-
-        if knight_defenders >= knight_attackers:
-            return False
-        
-        if direct_attackers == 1:
-            capture(self.nextrow, caps[0][2])
-            return True
-        
-        if knight_attackers == 1:
-            weak = -1 if self.local(2, -1) != opp_team else 1
-            capture(self.nextrow, self.col + weak)
-            return True
-
-        weak = -1 if self.local(-2, -1) != team else 1
-        capture(self.nextrow, self.col + (-weak))
-        return True
+        # cancapture = []
+        # for cdiff in [-1, 1]:
+        #     if check_space_wrapper(self.nextrow, self.col + cdiff) == opp_team: # up and right
+        #         cancapture.append(cdiff)
+        # if len(cancapture) == 0:
+        #     return False
+        # elif len(cancapture) == 1:
+        #     capture(self.nextrow, self.col + cancapture[0])
+        #     return True
+        # else:
+        #     if self.local(0, 2) == team:
+        #         capture(self.nextrow, self.col + 1)
+        #         return True
+        #     elif self.local(0, -2):
+        #         capture(self.nextrow, self.col - 1)
+        #         return True
+        #     if self.local(2, 2) != opp_team:
+        #         capture(self.nextrow, self.col + 1)
+        #         return True
+        #     elif self.local(-2, 2) != opp_team:
+        #         capture(self.nextrow, self.col - 1)
+        #         return True
+        #     capture(self.nextrow, self.col - 1)
+        #     return True
 
 
 class Overlord:
