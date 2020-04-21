@@ -105,14 +105,17 @@ class Pawn:
     
 
     def check_full(self):
+        count = 0
         for rdiff in range(-2, 1):
-            for cdiff in range(-2, 3):
+            for cdiff in range(-1, 2):
                 if not inbounds(self.row + rdiff, self.col + cdiff):
                     continue
                 if self.local(rdiff, cdiff) == team:
-                    continue
-                self.waiting = 0
-                return
+                    count += 1
+        threshold = 5 if self.col in [0, self.board_size - 1] else 7
+        if count < threshold:
+            self.waiting = 0
+            return
         self.waiting = self.waiting + 1
 
 #        for cdiff in [-2, -1, 1, 2]:
@@ -235,30 +238,29 @@ class Overlord:
     def run(self):
         self.round_count = self.round_count + 1
         self.update_board()
-        if self.defend():
-            log("DEFENDED")
-            return
         if self.round_count < 20:
             self.spawncopy()
         else:
-            log("SPAWNING LOW")
-#            if self.round_count % 50 < 15 or self.round_count > 480:
-            if self.round_count > GAME_MAX / 2:
-                if self.round_count % 10 < 5:
-                    self.spawnattack()
-                else:
-                    self.spawnlow(0, self.board_size)
+            if self.round_count % 2 == 0:
+                self.attack_column = 2
+                self.spawnattack()
             else:
-                self.attack_column = None
                 self.spawnlow(0, self.board_size)
-    
+
+
     def spawnattack(self):
         if self.attack_column is None:
             self.decide_attack_column()
         for cdiff in range(2, 16):
             if self.spawnlow(self.attack_column - cdiff, self.attack_column + cdiff + 1):
                 return
+#            assert(False)
 
+    def spawndefend(self):
+        self.decide_defense_column()
+        for cdiff in range(2, 16):
+            if self.spawnlow(self.defense_column - cdiff, self.defense_column + cdiff + 1):
+                return
 
     def decide_attack_column(self):
         pushes = []
@@ -277,16 +279,6 @@ class Overlord:
             self.attack_column = 1
         elif self.attack_column == self.board_size - 1:
             self.attack_column = self.board_size - 2
-
-
-    def defend(self):
-        if self.enemy_got_past():
-            log("GOT PAST")
-            return True
-        if self.enemy_penetrated():
-            log("PENETRATED")
-            return True
-        return False
     
     def enemy_got_past(self):
         cols = []

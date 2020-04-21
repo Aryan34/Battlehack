@@ -311,8 +311,6 @@ class Overlord:
         return dL, dR
 
 
-
-
     def spawncopy(self):
         counts = []
         for col in range(self.board_size):
