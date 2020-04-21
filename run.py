@@ -93,6 +93,9 @@ if __name__ == '__main__':
     faulthandler.enable() 
 
     # This is where the interesting things start!
+    print("Team 1:", args.player[0])
+    print("Team 2:", args.player[1])
+    print("Version: 1.1.0")
 
     # Every game needs 2 code containers with each team's bot code.
     code_container1 = CodeContainer.from_directory(args.player[0])

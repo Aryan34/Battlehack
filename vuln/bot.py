@@ -88,14 +88,14 @@ class Pawn:
         if self.trycapture():
             return
         # CHARGE!!!!
-#        if self.waiting > 4:
-#            self.tryforward()
-#            return
+        if self.waiting > 1 and map_loc(self.row) < 12:
+            self.tryforward()
+            return
         self.check_full()
         # Stay safe boi
         attackers, defenders, backup_defenders = self.danger()
         if defenders > attackers and backup_defenders > 0:
-    #        if defenders > attackers:
+#        if defenders > attackers:
             self.tryforward()
         if attackers > 0:
             return
@@ -106,7 +106,7 @@ class Pawn:
 
     def check_full(self):
         for rdiff in range(-2, 1):
-            for cdiff in range(-2, 3):
+            for cdiff in range(-1, 2):
                 if not inbounds(self.row + rdiff, self.col + cdiff):
                     continue
                 if self.local(rdiff, cdiff) == team:
@@ -144,74 +144,30 @@ class Pawn:
 
     def trycapture(self):
         # try catpuring pieces
-
-        """
-        my_attackers: number of attackers on me (direct and knight)
-        my_defenders: number of defenders on me (direct and knight)
-        """
-
-        caps = []
+        cancapture = []
         for cdiff in [-1, 1]:
-            if self.local(1, cdiff) == opp_team:
-                capture(self.nextrow, self.col + cdiff)
+            if check_space_wrapper(self.nextrow, self.col + cdiff) == opp_team: # up and right
+                cancapture.append(cdiff)
+        if len(cancapture) == 0:
+            return False
+        elif len(cancapture) == 1:
+            capture(self.nextrow, self.col + cancapture[0])
+            return True
+        else:
+            if self.local(0, 2) == team:
+                capture(self.nextrow, self.col + 1)
                 return True
-                cap_defenders = 0
-                for cd in [-1, 1]:
-                    if self.local(2, cdiff + cd) == opp_team:
-                        cap_defenders += 1
-                cap_attackers = 1
-                if self.local(0, cdiff * 2) == team:
-                    cap_attackers += 1
-
-                # If you got more boys on it than they have defending, then yeet it
-                if cap_attackers > cap_defenders:
-                    capture(self.nextrow, self.col + cdiff)
-                    return True
-
-                caps.append((cap_attackers, cap_defenders, self.col + cdiff))
-
-        if len(caps) == 0:
-            return False
-
-        behind = self.local(-1, 0) == team
-        direct_attackers = len(caps)
-        knight_attackers = 0
-        for cdiff in [-1, 1]:
-            if self.local(2, cdiff) == opp_team:
-                knight_attackers = knight_attackers + 1
-        direct_defenders, knight_defenders = 0, 0
-        for cdiff in [-1, 1]:
-            if self.local(-1, cdiff) == team:
-                direct_defenders += 1
-            elif self.local(-2, cdiff) == team:
-                knight_defenders += 1
-
-        if direct_defenders > direct_attackers:
-            return False
-            
-        if direct_attackers > direct_defenders:
-            if len(caps) == 1:
-                capture(self.nextrow, caps[0][2])
+            elif self.local(0, -2):
+                capture(self.nextrow, self.col - 1)
                 return True
-            defended = self.col - 1 if self.local(-1, -1) == team else self.col + 1
-            capture(self.nextrow, defended)
+            if self.local(2, 2) != opp_team:
+                capture(self.nextrow, self.col + 1)
+                return True
+            elif self.local(-2, 2) != opp_team:
+                capture(self.nextrow, self.col - 1)
+                return True
+            capture(self.nextrow, self.col - 1)
             return True
-
-        if knight_defenders >= knight_attackers:
-            return False
-        
-        if direct_attackers == 1:
-            capture(self.nextrow, caps[0][2])
-            return True
-        
-        if knight_attackers == 1:
-            weak = -1 if self.local(2, -1) != opp_team else 1
-            capture(self.nextrow, self.col + weak)
-            return True
-
-        weak = -1 if self.local(-2, -1) != team else 1
-        capture(self.nextrow, self.col + (-weak))
-        return True
 
 
 class Overlord:
@@ -226,6 +182,8 @@ class Overlord:
         self.board = [[False for i in range(self.board_size)] for j in range(self.board_size)]
         self.prev_board = self.board
         self.attack_column = None
+        self.pushback_column = []
+        self.cdiff = 0
 
     def get_pos(self, r, c):
         # check space, except doesn't hit you with game errors
@@ -282,19 +240,28 @@ class Overlord:
         if self.defend():
             log("DEFENDED")
             return
-        if self.round_count < 20:
+        if self.round_count < 40:
             self.spawncopy()
         else:
             log("SPAWNING LOW")
 #            if self.round_count % 50 < 15 or self.round_count > 480:
-            if self.round_count > GAME_MAX / 2:
+#            if self.round_count > GAME_MAX / 2:
+            if False:
                 if self.round_count % 10 < 5:
                     self.spawnattack()
                 else:
                     self.spawnlow(0, self.board_size)
             else:
                 self.attack_column = None
-                self.spawnlow(0, self.board_size)
+#                if self.pushback():
+#                    return
+                if self.round_count % 100 > 50 or self.round_count > 400:
+                    if self.spawnvuln():
+                        log("SPAWNED VULNERABLE")
+                        return
+                    self.spawnlow(0, self.board_size)
+                else:
+                    self.spawnlow(0, self.board_size)
     
     def spawnattack(self):
         if self.attack_column is None:
@@ -302,6 +269,60 @@ class Overlord:
         for cdiff in range(2, 16):
             if self.spawnlow(self.attack_column - cdiff, self.attack_column + cdiff + 1):
                 return
+
+    def spawnvuln(self):
+        counts = []
+        for col in range(self.board_size):
+            if map_loc(self.get_stalemate_line(col)) > 11:
+                continue
+            count = 0
+            if col != 0:
+                count += self.get_col_count(col - 1, opp_team)
+            if col != self.board_size - 1:
+                count += self.get_col_count(col + 1, opp_team)
+            if col in [0, self.board_size - 1]:
+                count = count * 2
+            counts.append((count, col))
+        counts.sort()
+        for count, col in counts:
+            col = 1
+            if col == 0: col = 1
+            if col == self.board_size - 1: col = self.board_size - 2
+            for i in range(3):
+                self.cdiff = self.cdiff + 1
+                if self.cdiff == 2:
+                    self.cdiff = -1
+                if self.safe_spawn(col + self.cdiff):
+                    return True
+        return False
+
+    def pushback(self):
+        if len(self.pushback_column) == 0:
+            col = self.decide_pushback_column()
+            col = col - 1
+            if col >= self.board_size - 1:
+                col = self.board_size - 2
+            if col <= 0:
+                col = 1
+            self.pushback_column = [col - 1, col + 1, col]
+        while self.pushback_column:
+            col = self.pushback_column.pop()
+            if self.safe_spawn(col):
+                return True
+        return False
+
+
+    def decide_pushback_column(self):
+        farthest_back = (float("inf"), -1)
+        for col in range(self.board_size):
+            stalemate = map_loc(self.get_stalemate_line(col))
+            if stalemate is None:
+                farthest_back = (-100, col)
+                continue
+            val = stalemate + self.get_col_count(col, team) - self.get_col_count(col, opp_team)
+            if val < farthest_back[0]:
+                farthest_back = (val, col)
+        return farthest_back[1]
 
 
     def decide_attack_column(self):
