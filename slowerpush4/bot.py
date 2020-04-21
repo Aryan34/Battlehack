@@ -233,7 +233,7 @@ class Overlord:
             log("DEFENDED")
             return
         if self.round_count < 20:
-            self.spawncopy()
+            self.spawn_initial()
         else:
             log("SPAWNING LOW")
 #            if self.round_count % 50 < 15 or self.round_count > 480:
@@ -325,6 +325,20 @@ class Overlord:
             for row in range(self.board_size):
                 pass
 
+    def spawn_initial(self):
+        for col in range(self.board_size):
+            allied = self.get_col_count(col, team)
+            enemy = self.get_col_count(col, opp_team)
+            if enemy > 0 and allied == 0:
+                if self.safe_spawn(col):
+                    return True
+
+        for col in range(self.board_size):
+            allied = self.get_col_count(col, team)
+            enemy = self.get_col_count(col, opp_team)
+            if enemy == 0 and allied == 0:
+                if self.safe_spawn(col):
+                    return True
 
     def spawncopy(self):
         counts = []
