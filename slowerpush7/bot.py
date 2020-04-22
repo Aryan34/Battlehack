@@ -402,9 +402,6 @@ class Overlord:
         return count        
         
 
-    def hold_heuristic(self, col):
-        return self.initial_heuristic(col)
-
     def low_heuristic(self, col):
         counts = []
         allied_count = self.get_col_count(col, team)
@@ -418,8 +415,8 @@ class Overlord:
         stalemate = self.get_stalemate_line(col)
 #        left_stalemate = self.get_stalemate_line(col)
 #        right_stalemate = self.get_stalemate_line(col)
-#        if stalemate is None:
-#            stalemate = -50
+        if stalemate is None:
+            stalemate = -50
         return allied * 100 - enemy * 50 - abs(stalemate - 8) * 50 + abs(col - 8)
 
 
