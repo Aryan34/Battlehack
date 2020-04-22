@@ -5,7 +5,7 @@ from battlehack20.stubs import *
 # TODO: Overlord spam a couple columns near the end (to try and win tiebreaker)
 
 GAME_MAX = 250
-FARTHEST_ROW = 8
+FARTHEST_ROW = 9
 
 DEBUG = 0
 def dlog(str):
@@ -86,18 +86,18 @@ class Pawn:
 
     def run(self):
         self.update_state()
-        attackers, defenders, backup_defenders = self.danger()
-#        if attackers == 0 and not self.is_defending():
-#            self.tryforward()
-#            return
         if self.trycapture():
             return
-        self.check_full()
-        timer = 4
-        if self.waiting > timer and map_loc(self.row) < FARTHEST_ROW:
+        # CHARGE!!!!
+#        timer = 16 - map_loc(self.row)
+        if self.waiting > 4 and map_loc(self.row) < FARTHEST_ROW:
             self.tryforward()
             return
+#        self.check_full()
+        # Stay safe boi
+        attackers, defenders, backup_defenders = self.danger()
         if defenders > attackers and backup_defenders > 0 and map_loc(self.row) < FARTHEST_ROW:
+#        if defenders > attackers:
             self.tryforward()
         if attackers > 0:
             return
@@ -205,6 +205,7 @@ class Overlord:
     def col_defended(self, col):
         return self.ally_present(col - 1) or self.ally_present(col + 1)
 
+
     def update_board(self):
         return
         board = []
@@ -224,6 +225,8 @@ class Overlord:
         return count
 
     def get_col_count(self, col, t):
+        if col < 0 or col >= self.board_size:
+            return 0
         count = 0
         for row in range(self.board_size):
             if check_space(row, col) == t:
@@ -231,24 +234,22 @@ class Overlord:
         return count
     
     def get_stalemate_line(self, col):
-        farthest = None
-        for row in list(range(self.board_size)):
+        for row in list(range(self.board_size))[::-1]:
             loc = map_loc(row)
             if self.get_pos(loc, col) == team:
-                farthest = row
-        return farthest
+                return loc
+        return None
 
     def run(self):
         self.round_count = self.round_count + 1
         self.update_board()
-        if self.defend():
-            log("DEFENDED")
-            return
         if self.round_count < 20:
             self.spawnheuristic(self.initial_heuristic)
         else:
-#            self.spawnheuristic(self.low_heuristic)
-            self.spawnheuristic(self.need_heuristic)
+            if self.defend():
+                log("DEFENDED")
+                return
+            self.spawnheuristic(self.low_heuristic)
     
     def defend(self):
         if self.enemy_got_past():
@@ -323,6 +324,7 @@ class Overlord:
             if self.opp_present(col + cdiff):
                 if not defended:
                     count -= 20
+
         return count        
 
     def low_heuristic(self, col):
@@ -330,15 +332,6 @@ class Overlord:
         allied_count = self.get_col_count(col, team)
         enemy_count = self.get_col_count(col, opp_team)
         return allied_count * 100 - enemy_count * 50 + abs(col - 8)
-
-    def need_heuristic(self, col):
-        counts = []
-        allied_count = self.get_col_count(col, team)
-        enemy_count = self.get_col_count(col, opp_team)
-        stalemate = self.get_stalemate_line(col)
-        if stalemate is None:
-            stalemate = -10
-        return allied_count * 100 - enemy_count * 50 + stalemate * 50 + abs(col - 8)
 
 
 robot = Pawn() if get_type() == RobotType.PAWN else Overlord()
