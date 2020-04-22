@@ -100,15 +100,16 @@ class Pawn:
         self.attackers = attackers
         if self.trycapture():
             return
-        if self.is_defending():
-            return
         # CHARGE!!!!
-        self.check_full()
         timer = 4
         if self.waiting > timer and map_loc(self.row) < FARTHEST_ROW:
             self.tryforward()
             return
 #        if self.local(1, 0) != opp_team and attackers > 0 and self.col <= 4:
+        self.check_full()
+        if self.is_defending():
+            return
+
         # Stay safe boi
         if defenders > attackers and backup_defenders > 0 and map_loc(self.row) < FARTHEST_ROW:
 #        if defenders > attackers:
@@ -356,22 +357,8 @@ class Overlord:
         return False
 
     def initial_heuristic(self, col):
-        allied = self.get_col_count(col, team)
-        enemy = self.get_col_count(col, opp_team)
-        count = 0
-        if allied > 0:
-            return 150 * allied
-
-        for cdiff in [-1, 0, 1]:
-            defended = self.col_defended(col + cdiff)
-            if defended:
-                count += 20
-            else:
-                count -= 20
-            if self.opp_present(col + cdiff):
-                if not defended:
-                    count -= 20
-        return count        
+        arr = [0, 0, 1, 2, 3, 4, 5, 6, 7]
+        return -1 if col == arr[self.round_count] else 1
         
 
     def low_heuristic(self, col):

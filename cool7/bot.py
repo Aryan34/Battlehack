@@ -100,15 +100,16 @@ class Pawn:
         self.attackers = attackers
         if self.trycapture():
             return
-        if self.is_defending():
-            return
         # CHARGE!!!!
-        self.check_full()
         timer = 4
         if self.waiting > timer and map_loc(self.row) < FARTHEST_ROW:
             self.tryforward()
             return
 #        if self.local(1, 0) != opp_team and attackers > 0 and self.col <= 4:
+        self.check_full()
+        if self.is_defending():
+            return
+
         # Stay safe boi
         if defenders > attackers and backup_defenders > 0 and map_loc(self.row) < FARTHEST_ROW:
 #        if defenders > attackers:
@@ -281,16 +282,43 @@ class Overlord:
     def run(self):
         self.round_count = self.round_count + 1
         self.update_board()
+        if self.defend():
+            log("DEFENDED")
+            return
         if self.round_count < 20:
             self.spawnheuristic(self.initial_heuristic)
             self.last_spawn = None
         else:
-            if self.defend():
-                log("DEFENDED")
-                return
+#            if self.round_count % 50 < 15 or self.round_count > 480:
+#            if self.round_count > GAME_MAX / 2:
+            if False:
+                if self.round_count % 10 < 5:
+                    self.spawnattack()
+                else:
+                    self.spawnheuristic(self.low_heuristic)
             else:
+#                self.attack_weak()
+#                if self.last_spawn is None:
+#                    self.spawnheuristic(self.need_heuristic)
+#                else:
+#                    self.safe_spawn(self.last_spawn)
+#                    self.last_spawn = None
                 self.spawnheuristic(self.need_heuristic)
     
+    def attack_weak(self):
+        farthest = []
+        for col in range(self.board_size):
+            stalemate = self.get_stalemate_line(col)
+            if stalemate is None:
+                stalemate = -float("inf")
+            farthest.append((-stalemate, col))
+        farthest.sort()
+        for _, col in farthest:
+            if self.focus(col):
+                return True
+        return False
+
+
     def focus(self, col):
         if col < 2: col = 2
         if col > self.board_size - 3: col = self.board_size - 3
