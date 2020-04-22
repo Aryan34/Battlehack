@@ -80,12 +80,26 @@ class Pawn:
         return check_space_wrapper(self.row + rdiff * self.forward, self.col + cdiff)
 
 
+    def check_follow(self):
+        return False
+        if self.prev_local(1, 0) == team and self.local(1, 0) != team:
+            if self.col == self.board_size - 1 or self.local(1, 1) == team:
+                if self.col == 0 or self.local(1, -1) == team:
+                    self.tryforward()
+            return True
+        return False
+
+
     def run(self):
         self.update_state()
         if self.trycapture():
             return
         # CHARGE!!!!
-        timer = 80
+        timer = 50
+        if self.check_follow():
+            return
+        if self.waiting > 0:
+            log("Waiting: " + str(self.waiting))
         if self.waiting > timer and map_loc(self.row) < FARTHEST_ROW:
             self.tryforward()
             return

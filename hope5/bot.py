@@ -158,6 +158,7 @@ class Pawn:
 
         if defenders >= attackers:
             return False
+
         return True
 
     def trycapture(self):
@@ -340,11 +341,15 @@ class Overlord:
             left = self.get_stalemate_line(col - 1)
             if left > 7:
                 s_h = s_h + (left - 7)
+            elif left < 6:
+                s_h = s_h + (6 - left)
         if col < self.board_size - 1:
             right = self.get_stalemate_line(col + 1)
             if right > 7:
                 s_h = s_h + (right - 7)
-        return allied * 100 - enemy * 50 + - s_h * 200 + abs(col - 8)
+            elif right < 6:
+                s_h = s_h + (6 - right)
+        return allied * 100 - enemy * 50 + - s_h * 100 + abs(col - 8)
 
 
 robot = Pawn() if get_type() == RobotType.PAWN else Overlord()
