@@ -176,15 +176,35 @@ class Pawn:
 
         return True
 
+    def num_ally_defenders(self, col_dir):
+        count = 0
+        for cdiff in [-1, 1]:
+            for rdiff in [-1, -2]:
+                if self.local(rdiff, cdiff + col_dir) == team:
+                    count += 1
+        return count
+
+
+    def num_enemy_attackers(self, col_dir):
+        count = 0
+        for cdiff in [-1, 1]:
+            for rdiff in [2]:
+                if self.local(rdiff, cdiff + col_dir) == opp_team:
+                    count += 1
+        return count
 
     def trycapture(self):
-        # try catpuring pieces
+        # try capturing pieces
+        cdiff_list = []
         for cdiff in [-1, 1]:
-            if self.local(1, cdiff) == opp_team:
-                if self.check_safe_capture(cdiff):
-                    capture(self.nextrow, self.col + cdiff)
-                    return True
-        return False
+            if self.local(1, cdiff) == opp_team and self.check_safe_capture(cdiff):
+                heuristic = self.num_enemy_attackers(cdiff) - self.num_ally_defenders(cdiff)
+                cdiff_list.append((heuristic, cdiff))
+        cdiff_list.sort()
+        if not cdiff_list:
+            return False
+        capture(self.nextrow, self.col + cdiff_list[0][1])
+        return True
 
 
 class Overlord:
