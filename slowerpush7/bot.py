@@ -391,7 +391,7 @@ class Overlord:
 #        right_stalemate = self.get_stalemate_line(col)
         if stalemate is None:
             stalemate = -50
-        return allied * 100 - enemy * 50 - abs(stalemate - 8) * 50 + abs(col - 8)
+        return allied * 100 - enemy * 0 - abs(stalemate - 8) * 50 + abs(col - 8)
 
 
 
