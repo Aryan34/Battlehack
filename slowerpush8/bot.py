@@ -183,6 +183,7 @@ class Overlord:
         self.board = [[False for i in range(self.board_size)] for j in range(self.board_size)]
         self.prev_board = self.board
         self.attack_column = None
+        self.last_spawn = None
 
     def get_pos(self, r, c):
         # check space, except doesn't hit you with game errors
@@ -198,6 +199,7 @@ class Overlord:
             return False
         if self.get_pos(self.index, i) in [team, opp_team]:
             return False
+        self.last_spawn = i
         spawn(self.index, i)
         return True
 
@@ -255,6 +257,7 @@ class Overlord:
             return
         if self.round_count < 20:
             self.spawnheuristic(self.initial_heuristic)
+            self.last_spawn = None
         else:
 #            if self.round_count % 50 < 15 or self.round_count > 480:
 #            if self.round_count > GAME_MAX / 2:
@@ -265,8 +268,12 @@ class Overlord:
                     self.spawnheuristic(self.low_heuristic)
             else:
 #                self.attack_weak()
+#                if self.last_spawn is None:
+#                    self.spawnheuristic(self.need_heuristic)
+#                else:
+#                    self.safe_spawn(self.last_spawn)
+#                    self.last_spawn = None
                 self.spawnheuristic(self.need_heuristic)
-#                self.spawnheuristic(self.low_heuristic)
     
     def attack_weak(self):
         farthest = []

@@ -5,7 +5,7 @@ from battlehack20.stubs import *
 # TODO: Overlord spam a couple columns near the end (to try and win tiebreaker)
 
 GAME_MAX = 250
-FARTHEST_ROW = 11
+FARTHEST_ROW = 10
 
 DEBUG = 0
 def dlog(str):
@@ -203,7 +203,7 @@ class Overlord:
         self.round_count = 0
         self.board = [[False for i in range(self.board_size)] for j in range(self.board_size)]
         self.prev_board = self.board
-        self.attack_column = None
+        self.last_spawn = None
 
     def get_pos(self, r, c):
         # check space, except doesn't hit you with game errors
@@ -220,6 +220,7 @@ class Overlord:
         if self.get_pos(self.index, i) in [team, opp_team]:
             return False
         spawn(self.index, i)
+        self.last_spawn = i
         return True
 
     def is_empty(self, col):
@@ -276,6 +277,7 @@ class Overlord:
             return
         if self.round_count < 20:
             self.spawnheuristic(self.initial_heuristic)
+            self.last_spawn = None
         else:
 #            if self.round_count % 50 < 15 or self.round_count > 480:
 #            if self.round_count > GAME_MAX / 2:
@@ -286,8 +288,12 @@ class Overlord:
                     self.spawnheuristic(self.low_heuristic)
             else:
 #                self.attack_weak()
+#                if self.last_spawn is None:
+#                    self.spawnheuristic(self.need_heuristic)
+#                else:
+#                    self.safe_spawn(self.last_spawn)
+#                    self.last_spawn = None
                 self.spawnheuristic(self.need_heuristic)
-#                self.spawnheuristic(self.low_heuristic)
     
     def attack_weak(self):
         farthest = []
@@ -400,9 +406,11 @@ class Overlord:
         allied = self.get_col_count(col, team)
         enemy = self.get_col_count(col, opp_team)
         stalemate = self.get_stalemate_line(col)
-        if stalemate is None:
-            stalemate = -50
-        return allied * 100 - enemy * 50 + stalemate * 10 + abs(col - 8)
+#        left_stalemate = self.get_stalemate_line(col)
+#        right_stalemate = self.get_stalemate_line(col)
+#        if stalemate is None:
+#            stalemate = -50
+        return allied * 100 - enemy * 50 - abs(stalemate - 8) * 50 + abs(col - 8)
 
 
 
