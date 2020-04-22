@@ -256,14 +256,14 @@ class Overlord:
     
     def get_stalemate_line(self, col):
         farthest = None
-        for row in range(self.board_size):
-            loc = map_loc(row)
-            if self.get_pos(loc, col) == team:
-                farthest = row
-        if farthest is None:
-            return None
-        opp_farthest = None
         if self.team == Team.WHITE:
+            for row in range(self.board_size):
+                loc = map_loc(row)
+                if self.get_pos(loc, col) == team:
+                    farthest = row
+            if farthest is None:
+                return None
+            opp_farthest = None
             for row in range(self.board_size):
                 loc = map_loc(row)
                 if self.get_pos(loc, col) == opp_team:
@@ -273,13 +273,13 @@ class Overlord:
                 return farthest
             return (farthest + opp_farthest) / 2
         else:
-#            for row in list(range(self.board_size))[::-1]:
-#                loc = map_loc(row)
-#                if self.get_pos(loc, col) == team:
-#                    farthest = loc
-#                    break
-#            if farthest is None:
-#                return None
+            for row in list(range(self.board_size))[::-1]:
+                loc = map_loc(row)
+                if self.get_pos(loc, col) == team:
+                    farthest = loc
+                    break
+            if farthest is None:
+                return None
             opp_farthest = None
             for row in list(range(self.board_size))[::-1]:
                 loc = map_loc(row)
