@@ -51,8 +51,6 @@ class Pawn:
         self.local_, self.prev_local_ = None, None
         self.waiting = 0
         self.board_size = get_board_size()
-        self.moved_forward = False
-        self.attackers = 0
 
 
     def calc_local(self):
@@ -74,9 +72,6 @@ class Pawn:
 
 
     def update_state(self):
-        self.prev_attackers = self.attackers
-        self.prev_forward = self.moved_forward
-        self.moved_forward = False
         self.row, self.col = get_location()
         self.nextrow = self.row + self.forward
         self.prev_local_ = self.local_
@@ -88,19 +83,13 @@ class Pawn:
     def check_piece_relative(self, rdiff, cdiff):
         return check_space_wrapper(self.row + rdiff * self.forward, self.col + cdiff)
 
-    def forward_is_better(self):
-        return False
-
 
     def run(self):
         self.update_state()
-        if self.forward_is_better():
-            return
-        attackers, defenders, backup_defenders = self.danger()
-        self.attackers = attackers
         if self.trycapture():
             return
         # CHARGE!!!!
+        attackers, defenders, backup_defenders = self.danger()
         timer = 4
         if self.waiting > timer and map_loc(self.row) < FARTHEST_ROW:
             self.tryforward()
@@ -147,7 +136,6 @@ class Pawn:
     def tryforward(self):
         if self.nextrow != -1 and self.nextrow != board_size and not check_space_wrapper(self.nextrow, self.col):
             move_forward()
-            self.moved_forward = True
             dlog('Moved forward!')
 
 
@@ -165,20 +153,12 @@ class Pawn:
         return attackers, defenders, backup_defenders
 
     def check_safe_capture(self, dir):
-        # If our friend just got captured, then we prolly wanna capture
-        if self.prev_local(1, dir) == team:
-            return True
-        
-        if self.prev_forward:
-            return True
-
-        if map_loc(self.row) < 8:
-            return True
-
-        if self.local(2, dir) != opp_team and self.local(1, -dir) != opp_team and (self.local(-1, -1) == team or self.local(1, -1) == team):
-            log("Bad capture: " + str(dir))
-            return False
-
+#        if self.local(0, dir*2) != team and self.local(-1, 0) != team and self.local(-1, -1) == team and self.local(1, -1) == team:
+#            log("Unsafe capture")
+#            return False
+#        if self.local(2, dir) != opp_team and self.local(1, -dir) != opp_team and (self.local(-1, -1) == team or self.local(1, -1) == team):
+#            log("Bad capture")
+#            return False
         return True
 
 
@@ -190,7 +170,6 @@ class Pawn:
                     capture(self.nextrow, self.col + cdiff)
                     return True
         return False
-
 
 class Overlord:
     def __init__(self):
@@ -361,7 +340,6 @@ class Overlord:
         # Spawns in the column w/ the lowest heuristic that's spawnable
         cols = [(method(i), i) for i in range(min, max)]
         cols.sort()
-        log(str(cols))
         for h, col in cols:
             if self.safe_spawn(col):
                 return True
