@@ -263,11 +263,21 @@ class Overlord:
         return count
     
     def get_stalemate_line(self, col):
+        farthest = None
         for row in list(range(self.board_size))[::-1]:
             loc = map_loc(row)
             if self.get_pos(loc, col) == team:
-                return loc
-        return None
+                farthest = loc
+        if farthest is None:
+            return None
+        opp_farthest = None
+        for row in list(range(self.board_size))[::-1]:
+            loc = map_loc(row)
+            if self.get_pos(loc, col) == opp_team:
+                opp_farthest = loc
+        if opp_farthest is None:
+            return farthest
+        return (farthest + opp_farthest) / 2
 
     def run(self):
         self.round_count = self.round_count + 1
