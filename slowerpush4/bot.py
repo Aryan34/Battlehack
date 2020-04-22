@@ -90,12 +90,13 @@ class Pawn:
             return
         # CHARGE!!!!
 #        timer = 16 - map_loc(self.row)
+        attackers, defenders, backup_defenders = self.danger()
         if self.waiting > 4 and map_loc(self.row) < FARTHEST_ROW:
             self.tryforward()
             return
-#        self.check_full()
+#        if self.local(1, 0) != opp_team and attackers > 0 and self.col <= 4:
+        self.check_full()
         # Stay safe boi
-        attackers, defenders, backup_defenders = self.danger()
         if defenders > attackers and backup_defenders > 0 and map_loc(self.row) < FARTHEST_ROW:
 #        if defenders > attackers:
             self.tryforward()
@@ -272,7 +273,9 @@ class Overlord:
                     self.spawnheuristic(self.low_heuristic)
             else:
                 self.attack_column = None
-                self.spawnheuristic(self.low_heuristic)
+                self.spawnheuristic(self.need_heuristic)
+#                self.spawnheuristic(self.low_heuristic)
+#                self.spawnheuristic(self.low_heuristic, 0, 5)
     
 
     def spawnattack(self):
@@ -373,11 +376,19 @@ class Overlord:
         if allied > 0:
             return 100 * allied
 
+    def hold_heuristic(self, col):
+        return self.initial_heuristic(col)
+
     def low_heuristic(self, col):
         counts = []
         allied_count = self.get_col_count(col, team)
         enemy_count = self.get_col_count(col, opp_team)
         return allied_count * 100 - enemy_count * 50 + abs(col - 8)
+
+    # Same as low_heuristic, but takes into consideration the enemy stalemate line
+    def need_heuristic(self, col):
+        return self.low_heuristic(col)
+
 
 
 robot = Pawn() if get_type() == RobotType.PAWN else Overlord()

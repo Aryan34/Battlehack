@@ -90,12 +90,14 @@ class Pawn:
             return
         # CHARGE!!!!
 #        timer = 16 - map_loc(self.row)
-        if self.waiting > 4 and map_loc(self.row) < FARTHEST_ROW:
+        attackers, defenders, backup_defenders = self.danger()
+        if self.waiting > 5 and map_loc(self.row) < FARTHEST_ROW:
+#        if self.waiting > 1 and map_loc(self.row) < FARTHEST_ROW:
             self.tryforward()
             return
-#        self.check_full()
+#        if self.local(1, 0) != opp_team and attackers > 0 and self.col <= 4:
+        self.check_full()
         # Stay safe boi
-        attackers, defenders, backup_defenders = self.danger()
         if defenders > attackers and backup_defenders > 0 and map_loc(self.row) < FARTHEST_ROW:
 #        if defenders > attackers:
             self.tryforward()
@@ -109,14 +111,19 @@ class Pawn:
     
 
     def check_full(self):
-        for rdiff in range(-2, 1):
-            for cdiff in range(-2, 3):
+        count = 0
+        for rdiff in [-2, -1, 0]:
+            for cdiff in [-2, -1, 0, 1, 2]:
                 if not inbounds(self.row + rdiff, self.col + cdiff):
                     continue
                 if self.local(rdiff, cdiff) == team:
-                    continue
-                self.waiting = 0
-                return
+                    count += 1
+#                    count += 1 * {0: 0.5, 1: 1, 2: 0.25}[abs(cdiff)]
+#        threshold = 4 if self.col in [0, self.board_size - 1] else 7
+        threshold = 9 if self.col in [0, self.board_size - 1] else 12 if self.col in [1, self.board_size - 2] else 15
+        if count < threshold:
+            self.waiting = 0
+            return
         self.waiting = self.waiting + 1
 
 
@@ -240,6 +247,8 @@ class Overlord:
         return count
 
     def get_col_count(self, col, t):
+        if col < 0 or col >= self.board_size:
+            return 0
         count = 0
         for row in range(self.board_size):
             if check_space(row, col) == t:
@@ -272,7 +281,12 @@ class Overlord:
                     self.spawnheuristic(self.low_heuristic)
             else:
                 self.attack_column = None
+#                if self.round_count % 2 == 0:
+#                    self.spawnheuristic(self.weak_heuristic)
+#                else:
                 self.spawnheuristic(self.low_heuristic)
+#                self.spawnheuristic(self.low_heuristic)
+#                self.spawnheuristic(self.low_heuristic, 0, 5)
     
 
     def spawnattack(self):
@@ -354,6 +368,7 @@ class Overlord:
         # Spawns in the column w/ the lowest heuristic that's spawnable
         cols = [(method(i), i) for i in range(min, max)]
         cols.sort()
+        log(str(cols))
         for h, col in cols:
             if self.safe_spawn(col):
                 return True
@@ -373,11 +388,43 @@ class Overlord:
         if allied > 0:
             return 100 * allied
 
+    def hold_heuristic(self, col):
+        return self.initial_heuristic(col)
+
     def low_heuristic(self, col):
         counts = []
         allied_count = self.get_col_count(col, team)
         enemy_count = self.get_col_count(col, opp_team)
         return allied_count * 100 - enemy_count * 50 + abs(col - 8)
+
+    # Same as low_heuristic, but takes into consideration the enemy stalemate line
+    def need_heuristic(self, col):
+        return self.low_heuristic(col)
+        allied = self.get_col_count(col, team)
+        enemy = self.get_col_count(col, opp_team)
+        stalemate = self.get_stalemate_line(col)
+        allied_support = self.get_col_count(col - 1, team) + self.get_col_count(col + 1, team)
+        enemy_support = self.get_col_count(col - 1, opp_team) + self.get_col_count(col + 1, opp_team)
+        return (allied_support + allied * 3) * 2 - (enemy_support + enemy * 3) * 1 + abs(col - 8) * .01
+#        return (allied_support + allied * 3) * 2 - (enemy_support + enemy * 3) * 1 + stalemate + abs(col - 8) * .01
+
+
+    def weak_heuristic(self, col):
+        allied = self.get_col_count(col, team)
+        enemy = self.get_col_count(col, opp_team)
+        allied_support = self.get_col_count(col - 1, team) + self.get_col_count(col + 1, team)
+        enemy_support = self.get_col_count(col - 1, opp_team) + self.get_col_count(col + 1, opp_team)
+        # More allied means u wanna spawn there
+        # More enemy means u don't
+        # More allied support means you wanna spawn there
+        # More enemy support means you don't
+        support = allied_support - enemy_support
+        diff = allied - enemy
+#        return -(support * 50 - diff*20) # Makes it spam one side, doesn't care abt defense
+        return (allied_support + allied * 3) * 2 - (enemy_support + enemy * 3) * 1 + abs(col - 8) * .01
+#        return -(support * 50 - enemy*20 - allied*10) # Makes it spam one side, doesn't care abt defense
+
+
 
 
 robot = Pawn() if get_type() == RobotType.PAWN else Overlord()
