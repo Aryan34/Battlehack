@@ -101,8 +101,8 @@ class Pawn:
             self.tryforward()
         if attackers > 0:
             return
-#        if self.is_defending():
-#            return
+        if self.is_defending():
+            return
         self.tryforward()
         bytecode = get_bytecode()
         dlog('Done! Bytecode left: ' + str(bytecode))

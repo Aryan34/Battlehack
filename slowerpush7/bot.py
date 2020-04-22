@@ -275,10 +275,6 @@ class Overlord:
                 else:
                     self.spawnheuristic(self.low_heuristic)
             else:
-                if self.focus(2):
-                    return
-                elif self.focus(13):
-                    return
                 self.spawnheuristic(self.need_heuristic)
 #                self.spawnheuristic(self.low_heuristic)
 #                self.spawnheuristic(self.low_heuristic, 0, 5)
