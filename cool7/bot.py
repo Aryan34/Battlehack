@@ -4,7 +4,7 @@ from battlehack20.stubs import *
 # TODO: If neighbor or neighbor's neighbor just pushed, then wait a bit
 # TODO: Overlord spam a couple columns near the end (to try and win tiebreaker)
 
-FARTHEST_ROW = 10
+FARTHEST_ROW = 8
 
 DEBUG = 0
 def dlog(str):
@@ -83,16 +83,13 @@ class Pawn:
     def check_piece_relative(self, rdiff, cdiff):
         return check_space_wrapper(self.row + rdiff * self.forward, self.col + cdiff)
 
-    def forward_is_better(self):
-        return False
-
-
+ 
     def run(self):
         self.update_state()
-        if self.forward_is_better():
-            return
         attackers, defenders, backup_defenders = self.danger()
         self.attackers = attackers
+        if attackers == 0 and not self.is_defending():
+            self.tryforward()
         if self.trycapture():
             return
         # CHARGE!!!!

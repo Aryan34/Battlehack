@@ -4,11 +4,17 @@ from battlehack20.stubs import *
 # TODO: If neighbor or neighbor's neighbor just pushed, then wait a bit
 # TODO: Overlord spam a couple columns near the end (to try and win tiebreaker)
 
+GAME_MAX = 250
 FARTHEST_ROW = 10
 
 DEBUG = 0
 def dlog(str):
     if DEBUG > 0:
+        log(str)
+
+
+def ilog(str):
+    if True:
         log(str)
 
 def inbounds(r, c):
@@ -25,18 +31,17 @@ def check_space_wrapper(r, c):
     except:
         return None
 
-team = get_team()
-opp_team = Team.WHITE if team == Team.BLACK else team.BLACK
-board_size = get_board_size()
-
-
 def spaces_in_front(a, b):
     diff = b - a
     return diff if team == Team.WHITE else -diff
 
-
 def map_loc(loc):
-    return loc if team == Team.WHITE else board_size - 1 - loc
+    return loc if team == Team.WHITE else 15 - loc
+
+
+team = get_team()
+opp_team = Team.WHITE if team == Team.BLACK else team.BLACK
+board_size = get_board_size()
 
 
 class Pawn:
@@ -46,8 +51,6 @@ class Pawn:
         self.local_, self.prev_local_ = None, None
         self.waiting = 0
         self.board_size = get_board_size()
-        self.moved_forward = False
-        self.attackers = 0
 
 
     def calc_local(self):
@@ -69,9 +72,6 @@ class Pawn:
 
 
     def update_state(self):
-        self.prev_attackers = self.attackers
-        self.prev_forward = self.moved_forward
-        self.moved_forward = False
         self.row, self.col = get_location()
         self.nextrow = self.row + self.forward
         self.prev_local_ = self.local_
@@ -83,26 +83,27 @@ class Pawn:
     def check_piece_relative(self, rdiff, cdiff):
         return check_space_wrapper(self.row + rdiff * self.forward, self.col + cdiff)
 
+
     def run(self):
         self.update_state()
         attackers, defenders, backup_defenders = self.danger()
-        self.attackers = attackers
-        if attackers == 0 and not self.is_defending():
-            self.tryforward()
+#        if attackers == 0 and not self.is_defending():
+#            self.tryforward()
+#            return
         if self.trycapture():
             return
-        # CHARGE!!!!
         self.check_full()
         timer = 4
         if self.waiting > timer and map_loc(self.row) < FARTHEST_ROW:
             self.tryforward()
             return
-#        if self.local(1, 0) != opp_team and attackers > 0 and self.col <= 4:
-        if self.is_defending():
-            return
-        # Stay safe boi
         if defenders > attackers and backup_defenders > 0 and map_loc(self.row) < FARTHEST_ROW:
             self.tryforward()
+        if attackers > 0:
+            return
+        if self.is_defending():
+            return
+        self.tryforward()
         bytecode = get_bytecode()
         dlog('Done! Bytecode left: ' + str(bytecode))
     
@@ -110,10 +111,7 @@ class Pawn:
     def check_full(self):
         for rdiff in range(-2, 1):
             for cdiff in range(-2, 3):
-#            for cdiff in range(-1, 2):
                 if not inbounds(self.row + rdiff, self.col + cdiff):
-                    continue
-                if cdiff == 0:
                     continue
                 if self.local(rdiff, cdiff) == team:
                     continue
@@ -133,7 +131,6 @@ class Pawn:
     def tryforward(self):
         if self.nextrow != -1 and self.nextrow != board_size and not check_space_wrapper(self.nextrow, self.col):
             move_forward()
-            self.moved_forward = True
             dlog('Moved forward!')
 
 
@@ -151,17 +148,9 @@ class Pawn:
         return attackers, defenders, backup_defenders
 
     def check_safe_capture(self, dir):
-        # If our friend just got captured, then we prolly wanna capture
-        if self.prev_local(1, dir) == team:
-            return True
-        
-        if map_loc(self.row) < 8:
-            return True
-
-        if self.local(2, dir) != opp_team and self.local(1, -dir) != opp_team and (self.local(-1, -1) == team or self.local(1, -1) == team):
-            log("Unsafe capture: " + str(dir))
+        if self.local(0, dir*2) != team and self.local(-1, 0) != team and self.local(-1, -1) == team and self.local(1, -1) == team:
+            log("Unsafe capture")
             return False
-
         return True
 
 
@@ -174,7 +163,6 @@ class Pawn:
                     return True
         return False
 
-
 class Overlord:
     def __init__(self):
         self.team = get_team()
@@ -186,7 +174,7 @@ class Overlord:
         self.round_count = 0
         self.board = [[False for i in range(self.board_size)] for j in range(self.board_size)]
         self.prev_board = self.board
-        self.last_spawn = None
+        self.attack_column = None
 
     def get_pos(self, r, c):
         # check space, except doesn't hit you with game errors
@@ -203,20 +191,7 @@ class Overlord:
         if self.get_pos(self.index, i) in [team, opp_team]:
             return False
         spawn(self.index, i)
-        self.last_spawn = i
         return True
-
-    def is_empty(self, col):
-        return self.get_col_count(col, team) == 0 and self.get_col_count(col, opp_team) == 0
-    
-    def ally_present(self, col):
-        return self.get_col_count(col, team) != 0
-
-    def opp_present(self, col):
-        return self.get_col_count(col, opp_team) != 0
-    
-    def col_defended(self, col):
-        return self.ally_present(col - 1) or self.ally_present(col + 1)
 
     def update_board(self):
         return
@@ -237,8 +212,6 @@ class Overlord:
         return count
 
     def get_col_count(self, col, t):
-        if col < 0 or col >= self.board_size:
-            return 0
         count = 0
         for row in range(self.board_size):
             if check_space(row, col) == t:
@@ -246,61 +219,23 @@ class Overlord:
         return count
     
     def get_stalemate_line(self, col):
-        farthest = None
-        if self.team == Team.WHITE:
-            for row in range(self.board_size):
-                loc = map_loc(row)
-                if self.get_pos(loc, col) == team:
-                    farthest = row
-            if farthest is None:
-                return None
-            opp_farthest = None
-            for row in range(self.board_size):
-                loc = map_loc(row)
-                if self.get_pos(loc, col) == opp_team:
-                    opp_farthest = row
-                    break
-            if opp_farthest is None:
-                return farthest
-            return (farthest + opp_farthest) / 2
-        else:
-            for row in list(range(self.board_size))[::-1]:
-                loc = map_loc(row)
-                if self.get_pos(loc, col) == team:
-                    farthest = loc
-                    break
-            if farthest is None:
-                return None
-            opp_farthest = None
-            for row in list(range(self.board_size))[::-1]:
-                loc = map_loc(row)
-                if self.get_pos(loc, col) == opp_team:
-                    opp_farthest = loc
-                    break
-            if opp_farthest is None:
-                return farthest
-            return (farthest + opp_farthest) / 2
-
+        for row in list(range(self.board_size))[::-1]:
+            loc = map_loc(row)
+            if self.get_pos(loc, col) == team:
+                return loc
+        return None
 
     def run(self):
         self.round_count = self.round_count + 1
         self.update_board()
+        if self.defend():
+            log("DEFENDED")
+            return
         if self.round_count < 20:
             self.spawnheuristic(self.initial_heuristic)
-            self.last_spawn = None
         else:
-            if self.defend():
-                log("DEFENDED")
-                return
-            self.spawnheuristic(self.need_heuristic)
+            self.spawnheuristic(self.low_heuristic)
     
-
-    def focus(self, col):
-        if col < 2: col = 2
-        if col > self.board_size - 3: col = self.board_size - 3
-        log(str(col))
-        return self.spawnheuristic(self.low_heuristic, col - 2, col + 3)
-
     def defend(self):
         if self.enemy_got_past():
             log("GOT PAST")
@@ -353,49 +288,30 @@ class Overlord:
         # Spawns in the column w/ the lowest heuristic that's spawnable
         cols = [(method(i), i) for i in range(min, max)]
         cols.sort()
-        log(str(cols))
         for h, col in cols:
             if self.safe_spawn(col):
                 return True
-        return False
+        return False        
 
     def initial_heuristic(self, col):
         allied = self.get_col_count(col, team)
         enemy = self.get_col_count(col, opp_team)
-        count = 0
+        if enemy > 0 and allied == 0:
+            return -100 * enemy
+        if enemy == 0 and allied == 0:
+            if col != 0 and self.get_col_count(col - 1, opp_team) != 0:
+                return 20
+            if col != self.board_size - 1 and self.get_col_count(col + 1, opp_team) != 0:
+                return 20
+            return -20
         if allied > 0:
-            return 150 * allied
-
-        for cdiff in [-1, 0, 1]:
-            defended = self.col_defended(col + cdiff)
-            if defended:
-                count += 20
-            else:
-                count -= 20
-            if self.opp_present(col + cdiff):
-                if not defended:
-                    count -= 20
-        return count        
-        
+            return 100 * allied
 
     def low_heuristic(self, col):
         counts = []
         allied_count = self.get_col_count(col, team)
         enemy_count = self.get_col_count(col, opp_team)
         return allied_count * 100 - enemy_count * 50 + abs(col - 8)
-
-    # Same as low_heuristic, but takes into consideration the enemy stalemate line
-    def need_heuristic(self, col):
-        allied = self.get_col_count(col, team)
-        enemy = self.get_col_count(col, opp_team)
-        stalemate = self.get_stalemate_line(col)
-#        left_stalemate = self.get_stalemate_line(col)
-#        right_stalemate = self.get_stalemate_line(col)
-#        if stalemate is None:
-#            stalemate = -50
-#        return allied * 100 - enemy * 50 - abs(stalemate - 8) * 50 + abs(col - 8)
-        return allied * 100 - enemy * 50 + abs(col - 8)
-
 
 
 robot = Pawn() if get_type() == RobotType.PAWN else Overlord()
