@@ -25,17 +25,18 @@ def check_space_wrapper(r, c):
     except:
         return None
 
+team = get_team()
+opp_team = Team.WHITE if team == Team.BLACK else team.BLACK
+board_size = get_board_size()
+
+
 def spaces_in_front(a, b):
     diff = b - a
     return diff if team == Team.WHITE else -diff
 
 def map_loc(loc):
-    return loc if team == Team.WHITE else self.board_size - 1 - loc
+    return loc if team == Team.WHITE else board_size - 1 - loc
 
-
-team = get_team()
-opp_team = Team.WHITE if team == Team.BLACK else team.BLACK
-board_size = get_board_size()
 
 
 class Pawn:
@@ -261,14 +262,14 @@ class Overlord:
         for row in range(self.board_size):
             loc = map_loc(row)
             if self.get_pos(loc, col) == team:
-                farthest = loc
+                farthest = row
         if farthest is None:
             return None
         opp_farthest = None
         for row in range(self.board_size):
             loc = map_loc(row)
             if self.get_pos(loc, col) == opp_team:
-                opp_farthest = loc
+                opp_farthest = row
                 break
         if opp_farthest is None:
             return farthest
@@ -277,13 +278,13 @@ class Overlord:
     def run(self):
         self.round_count = self.round_count + 1
         self.update_board()
-        if self.defend():
-            log("DEFENDED")
-            return
         if self.round_count < 20:
             self.spawnheuristic(self.initial_heuristic)
             self.last_spawn = None
         else:
+            if self.defend():
+                log("DEFENDED")
+                return
             self.spawnheuristic(self.need_heuristic)
     
 
