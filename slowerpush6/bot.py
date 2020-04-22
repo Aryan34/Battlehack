@@ -163,34 +163,6 @@ class Pawn:
                     return True
         return False
 
-        """
-        cancapture = []
-        for cdiff in [-1, 1]:
-            if check_space_wrapper(self.nextrow, self.col + cdiff) == opp_team: # up and right
-                cancapture.append(cdiff)
-        if len(cancapture) == 0:
-            return False
-        elif len(cancapture) == 1:
-            capture(self.nextrow, self.col + cancapture[0])
-            return True
-        else:
-            if self.local(0, 2) == team:
-                capture(self.nextrow, self.col + 1)
-                return True
-            elif self.local(0, -2):
-                capture(self.nextrow, self.col - 1)
-                return True
-            if self.local(2, 2) != opp_team:
-                capture(self.nextrow, self.col + 1)
-                return True
-            elif self.local(-2, 2) != opp_team:
-                capture(self.nextrow, self.col - 1)
-                return True
-            capture(self.nextrow, self.col - 1)
-            return True
-        """
-
-
 class Overlord:
     def __init__(self):
         self.team = get_team()
@@ -250,7 +222,7 @@ class Overlord:
         for row in list(range(self.board_size))[::-1]:
             loc = map_loc(row)
             if self.get_pos(loc, col) == team:
-                return row
+                return loc
         return None
 
     def run(self):
@@ -265,43 +237,9 @@ class Overlord:
             log("SPAWNING LOW")
 #            if self.round_count % 50 < 15 or self.round_count > 480:
 #            if self.round_count > GAME_MAX / 2:
-            if False:
-                if self.round_count % 10 < 5:
-                    self.spawnattack()
-                else:
-                    self.spawnheuristic(self.low_heuristic)
-            else:
-                self.attack_column = None
-                self.spawnheuristic(self.low_heuristic)
+            self.attack_column = None
+            self.spawnheuristic(self.low_heuristic)
     
-
-    def spawnattack(self):
-        if self.attack_column is None:
-            self.decide_attack_column()
-        for cdiff in range(2, 16):
-            if self.spawnheuristic(self.low_heuristic, self.attack_column - cdiff, self.attack_column + cdiff + 1):
-                return
-
-
-    def decide_attack_column(self):
-        pushes = []
-        for col in range(self.board_size):
-            my_count = self.get_col_count(col, team)
-            enemy_count = self.get_col_count(col, opp_team)
-            stalemate_line = self.get_stalemate_line(col)
-            if stalemate_line is None:
-                stalemate_line = float("inf")
-            else:
-                stalemate_line = map_loc(stalemate_line)
-            pushes.append((16 - stalemate_line, my_count - enemy_count, col))
-        pushes.sort()
-        self.attack_column = pushes[0][2]
-        if self.attack_column == 0:
-            self.attack_column = 1
-        elif self.attack_column == self.board_size - 1:
-            self.attack_column = self.board_size - 2
-
-
     def defend(self):
         if self.enemy_got_past():
             log("GOT PAST")

@@ -267,6 +267,7 @@ class Overlord:
             loc = map_loc(row)
             if self.get_pos(loc, col) == team:
                 farthest = loc
+                break
         if farthest is None:
             return None
         opp_farthest = None
@@ -274,6 +275,7 @@ class Overlord:
             loc = map_loc(row)
             if self.get_pos(loc, col) == opp_team:
                 opp_farthest = loc
+                break
         if opp_farthest is None:
             return farthest
         return (farthest + opp_farthest) / 2

@@ -4,17 +4,11 @@ from battlehack20.stubs import *
 # TODO: If neighbor or neighbor's neighbor just pushed, then wait a bit
 # TODO: Overlord spam a couple columns near the end (to try and win tiebreaker)
 
-GAME_MAX = 250
-FARTHEST_ROW = 10
+FARTHEST_ROW = 11
 
 DEBUG = 0
 def dlog(str):
     if DEBUG > 0:
-        log(str)
-
-
-def ilog(str):
-    if True:
         log(str)
 
 def inbounds(r, c):
@@ -36,7 +30,7 @@ def spaces_in_front(a, b):
     return diff if team == Team.WHITE else -diff
 
 def map_loc(loc):
-    return loc if team == Team.WHITE else 15 - loc
+    return loc if team == Team.WHITE else self.board_size - 1 - loc
 
 
 team = get_team()
@@ -264,17 +258,18 @@ class Overlord:
     
     def get_stalemate_line(self, col):
         farthest = None
-        for row in list(range(self.board_size))[::-1]:
+        for row in range(self.board_size):
             loc = map_loc(row)
             if self.get_pos(loc, col) == team:
                 farthest = loc
         if farthest is None:
             return None
         opp_farthest = None
-        for row in list(range(self.board_size))[::-1]:
+        for row in range(self.board_size):
             loc = map_loc(row)
             if self.get_pos(loc, col) == opp_team:
                 opp_farthest = loc
+                break
         if opp_farthest is None:
             return farthest
         return (farthest + opp_farthest) / 2
@@ -289,35 +284,8 @@ class Overlord:
             self.spawnheuristic(self.initial_heuristic)
             self.last_spawn = None
         else:
-#            if self.round_count % 50 < 15 or self.round_count > 480:
-#            if self.round_count > GAME_MAX / 2:
-            if False:
-                if self.round_count % 10 < 5:
-                    self.spawnattack()
-                else:
-                    self.spawnheuristic(self.low_heuristic)
-            else:
-#                self.attack_weak()
-#                if self.last_spawn is None:
-#                    self.spawnheuristic(self.need_heuristic)
-#                else:
-#                    self.safe_spawn(self.last_spawn)
-#                    self.last_spawn = None
-                self.spawnheuristic(self.need_heuristic)
+            self.spawnheuristic(self.need_heuristic)
     
-    def attack_weak(self):
-        farthest = []
-        for col in range(self.board_size):
-            stalemate = self.get_stalemate_line(col)
-            if stalemate is None:
-                stalemate = -float("inf")
-            farthest.append((-stalemate, col))
-        farthest.sort()
-        for _, col in farthest:
-            if self.focus(col):
-                return True
-        return False
-
 
     def focus(self, col):
         if col < 2: col = 2
