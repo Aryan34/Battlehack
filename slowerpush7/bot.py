@@ -117,6 +117,8 @@ class Pawn:
 #            for cdiff in range(-1, 2):
                 if not inbounds(self.row + rdiff, self.col + cdiff):
                     continue
+                if cdiff == 0:
+                    continue
                 if self.local(rdiff, cdiff) == team:
                     continue
                 self.waiting = 0
@@ -225,6 +227,18 @@ class Overlord:
         spawn(self.index, i)
         return True
 
+    def is_empty(self, col):
+        return self.get_col_count(col, team) == 0 and self.get_col_count(col, opp_team) == 0
+    
+    def ally_present(self, col):
+        return self.get_col_count(col, team) != 0
+
+    def opp_present(self, col):
+        return self.get_col_count(col, opp_team) != 0
+    
+    def col_defended(self, col):
+        return self.ally_present(col - 1) or self.ally_present(col + 1)
+
     def update_board(self):
         return
         board = []
@@ -244,6 +258,8 @@ class Overlord:
         return count
 
     def get_col_count(self, col, t):
+        if col < 0 or col >= self.board_size:
+            return 0
         count = 0
         for row in range(self.board_size):
             if check_space(row, col) == t:
@@ -254,7 +270,7 @@ class Overlord:
         for row in list(range(self.board_size))[::-1]:
             loc = map_loc(row)
             if self.get_pos(loc, col) == team:
-                return row
+                return loc
         return None
 
     def run(self):
@@ -275,11 +291,28 @@ class Overlord:
                 else:
                     self.spawnheuristic(self.low_heuristic)
             else:
+#                self.attack_weak()
                 self.spawnheuristic(self.need_heuristic)
 #                self.spawnheuristic(self.low_heuristic)
-#                self.spawnheuristic(self.low_heuristic, 0, 5)
     
+    def attack_weak(self):
+        farthest = []
+        for col in range(self.board_size):
+            stalemate = self.get_stalemate_line(col)
+            if stalemate is None:
+                stalemate = -float("inf")
+            farthest.append((-stalemate, col))
+        farthest.sort()
+        for _, col in farthest:
+            if self.focus(col):
+                return True
+        return False
+
+
     def focus(self, col):
+        if col < 2: col = 2
+        if col > self.board_size - 3: col = self.board_size - 3
+        log(str(col))
         return self.spawnheuristic(self.low_heuristic, col - 2, col + 3)
 
     def defend(self):
@@ -342,16 +375,21 @@ class Overlord:
     def initial_heuristic(self, col):
         allied = self.get_col_count(col, team)
         enemy = self.get_col_count(col, opp_team)
-        if enemy > 0 and allied == 0:
-            return -100 * enemy
-        if enemy == 0 and allied == 0:
-            if col != 0 and self.get_col_count(col - 1, opp_team) != 0:
-                return 20
-            if col != self.board_size - 1 and self.get_col_count(col + 1, opp_team) != 0:
-                return 20
-            return -20
+        count = 0
         if allied > 0:
-            return 100 * allied
+            return 150 * allied
+
+        for cdiff in [-1, 0, 1]:
+            defended = self.col_defended(col + cdiff)
+            if defended:
+                count += 20
+            else:
+                count -= 20
+            if self.opp_present(col + cdiff):
+                if not defended:
+                    count -= 20
+        return count        
+        
 
     def hold_heuristic(self, col):
         return self.initial_heuristic(col)
