@@ -4,7 +4,7 @@ from battlehack20.stubs import *
 # TODO: If neighbor or neighbor's neighbor just pushed, then wait a bit
 # TODO: Overlord spam a couple columns near the end (to try and win tiebreaker)
 
-FARTHEST_ROW = 11
+FARTHEST_ROW = 10
 
 DEBUG = 0
 def dlog(str):
@@ -34,9 +34,9 @@ def spaces_in_front(a, b):
     diff = b - a
     return diff if team == Team.WHITE else -diff
 
+
 def map_loc(loc):
     return loc if team == Team.WHITE else board_size - 1 - loc
-
 
 
 class Pawn:
@@ -164,9 +164,6 @@ class Pawn:
         if self.prev_local(1, dir) == team:
             return True
         
-        if self.prev_forward:
-            return True
-
         if map_loc(self.row) < 8:
             return True
 
@@ -279,21 +276,42 @@ class Overlord:
     
     def get_stalemate_line(self, col):
         farthest = None
-        for row in range(self.board_size):
-            loc = map_loc(row)
-            if self.get_pos(loc, col) == team:
-                farthest = row
-        if farthest is None:
-            return None
-        opp_farthest = None
-        for row in range(self.board_size):
-            loc = map_loc(row)
-            if self.get_pos(loc, col) == opp_team:
-                opp_farthest = row
-                break
-        if opp_farthest is None:
-            return farthest
-        return (farthest + opp_farthest) / 2
+        if self.team == Team.WHITE:
+            for row in range(self.board_size):
+                loc = map_loc(row)
+                if self.get_pos(loc, col) == team:
+                    farthest = row
+            if farthest is None:
+                return None
+            opp_farthest = None
+            for row in range(self.board_size):
+                loc = map_loc(row)
+                if self.get_pos(loc, col) == opp_team:
+                    opp_farthest = row
+                    break
+            if opp_farthest is None:
+                return farthest
+            return (farthest + opp_farthest) / 2
+        else:
+            for row in list(range(self.board_size))[::-1]:
+                loc = map_loc(row)
+                if self.get_pos(loc, col) == team:
+                    farthest = loc
+                    break
+            if farthest is None:
+                return None
+            opp_farthest = None
+            for row in list(range(self.board_size))[::-1]:
+                loc = map_loc(row)
+                if self.get_pos(loc, col) == opp_team:
+                    opp_farthest = loc
+                    break
+            if opp_farthest is None:
+                return farthest
+            return (farthest + opp_farthest) / 2
+
+
+
 
     def run(self):
         self.round_count = self.round_count + 1

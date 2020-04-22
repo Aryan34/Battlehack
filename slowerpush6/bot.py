@@ -5,7 +5,7 @@ from battlehack20.stubs import *
 # TODO: Overlord spam a couple columns near the end (to try and win tiebreaker)
 
 GAME_MAX = 250
-FARTHEST_ROW = 11
+FARTHEST_ROW = 10
 
 DEBUG = 0
 def dlog(str):
