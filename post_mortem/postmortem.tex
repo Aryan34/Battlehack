@@ -1,0 +1,121 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{Battlehack 2020 - Snakes and Ladders}
+    
+\author{Aryan Chinnala (AC34), Srikar Gouru (Epicsg99)}
+
+\usepackage{natbib}
+\usepackage{graphicx}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+\hspace{\parindent}
+I’m Srikar Gouru, a junior at TJHSST, and I competed with my friend Aryan Chinnala (also a junior at TJHSST) in this year’s Battlehack competition. Our first Battlecode competition was Battlecode 2020, as team Walrus, in which we didn’t do too well since it was our first time and we didn’t comprehend everything fast enough to develop a solid bot. We competed in Battlehack as team Snakes and Ladders (since it was a python engine). Battlehack was a lot shorter and simpler which allowed us to develop a strong bot which led us to first place in the final round robin!
+
+\section{Game Overview}
+
+\subsection{Game Specs}
+\hspace{\parindent}
+The game for Battlehack 2020 was relatively simple and based on Chess. It took place on a 16x16 board, and each team had one Overlord. The Overlord could sense the whole board and see where all of the Pawns were. Every turn, the Overlord could spawn one Pawn anywhere in their own back row.  The Pawn functioned as a normal Pawn, as it could either move forward one square or capture diagonally (there was no double forward for the first move). The games were played until one team got eight Pawns on the opponent's back row.
+\bigbreak
+Additionally, there was a 500 turn cap, at which point the tie breaker would be activated. The first tie breaker was the number of Pawns you had in the enemy back row. The second tie breaker was the number of Pawns in the opponent’s second-to-back row. The third tie breaker was the number of Pawns in the opponent’s third-to-back row, and that continued for each of the 16 rows. If the board was a complete tie, the game would be decided by a random coin flip.
+\bigbreak
+Finally, there is a bytecode limit of 20,000 bytecode for the Overlord and 20,000 bytecode for the Pawn. Bytecode is a common part of Battlecode and Battlehack competitions. Instead of setting a time limit on the AI, since that can be very variable depending on the engine it’s running on, the devs developed a bytecode system in which every basic operation, such as addition or subtraction, would cost 1 bytecode. Using bytecode made the game much more fair, and since many of the bots ended up not using random, also made the games deterministic.
+
+\subsection{Macro vs. Micro Gameplay}
+\hspace{\parindent}
+While developing the AI we discussed various strategies with each other and with others on Discord, during which we talked about various strategies for improving gameplay. The game was mostly split up into two levels of play, Macro, which described the Overlord’s gameplay and Micro, which described the Pawn’s gameplay. Macro techniques included spawning Pawns equally to create a wall for the opponent or bunching them together to create a strong attacking force. Micro techniques, on the other hand, involved Pawns deciding whether or not to capture and when to push forward vs. when to stay back.
+
+\section{Macro Gameplay}
+
+\subsection{Important Considerations}
+\hspace{\parindent}
+There are several aspects of the game that can have significant impact on matches, and these should be considered before designing a bot. Arguably the most important of these aspects is that Pawns can only sense the tiles within a 5x5 square concentric with the Pawn, unlike the Overlord which can sense the whole board. Without a concrete communications system, it’s difficult for Pawns to figure out what number of forces they are up against and how many defenders they have. 
+\bigbreak
+Another factor is matchups; with the various strats out there, they can always be countered by other strats. For example, a pure defense bot may beat a rush or attack bot by means of building up a Pawn advantage over time, allowing the defense bot to defeat enemy pushes more definitively as the game goes on. However, the same defense bot may lose to a slow push bot, which will take more even trades but still maintain a positional advantage throughout the match. Even during the final round robin, there were many cycles in which team A beat team B, team B beat team C, and team C beat team A.
+\bigbreak
+With that being said, here are the various strats we saw teams use throughout the week, along with the advantages and disadvantages of each strat.
+
+\subsection{Lattice Bot}
+\hspace{\parindent}
+Our initial idea was to create a lattice bot, which would consist of an empty tile surrounded by Pawns on all four sides, repeated across the board. The reasoning behind considering this strategy was that a lattice structure uses fewer Pawns to fill up a section of the board than completely filling up that section, as most current strats do, while still having the maximum number of defenders for each Pawn. Since a Pawn can only attack diagonally, having Pawns on the sides doesn’t provide direct support in terms of being able to trade pieces. Furthermore, since every other tile is empty in a lattice structure, it would be possible to send messages by having Overlord spawn a Pawn at the bottom of a column, and having Pawns push up and start an attack if they encounter a Pawn behind them. 
+\bigbreak
+What we didn’t consider about a lattice strat, however, is the benefit of having long columns of Pawns over a lattice structure. A long column can attack and trade with the top Pawn, push the entire column up one tile, and repeat. With this type of push, a lattice structure would lose to sheer numbers. Most importantly, however, it was very difficult to maintain a lattice structure throughout the game. The lattice would become deformed and not return to it original structure after any Pawn trades with the enemy, defeating the whole point of sacrificing numbers for better board control and ability to communicate.
+
+\subsection{Defense Bot}
+\hspace{\parindent}
+Many teams made a pure defense bot, which takes enemy Pawns when it can but otherwise never pushes into danger. Although this is the safest strat and should build up a Pawn advantage over most others (given strong micro play), it will almost always lead to a stalemate against other defense bots (leaving the game determined by a coin flip), and will be decimated by most rush bots. This is because rush bots have a weak defense across most of the board, but they have an unrelenting attack across two or three columns. The problem here is that defense bots won’t attack to take advantage of the rush bots’ weak defense, but will instead fall to the focused attack on a few columns. 
+
+\subsection{Attack Bots}
+\hspace{\parindent}
+There were several different types of attack bots that teams developed throughout the week, but in general, they push up into enemy territory and initiate trades if some condition is met, and the different conditions are what lead to the following sub-types of attack bots. These bots rely on gaining positional advantages in exchange for a Pawn deficit, in hopes that their superior positioning and space advantages can eventually overcome the enemy’s Pawn advantage.
+
+\subsubsection{Hard Push}
+\hspace{\parindent}
+The condition a typical hard push bot uses to determine when to push is whether or not a Pawn has at least some support if it moves up to initiate an attack. For example, if a Pawn is one tile away from the enemies, it will check if the space in front of it is defended by at least one friendly Pawn, and if it is, it will push up. Since the amount of support required to push is relatively low in hard push bots, Pawns will frequently attack and make small trades. Although this places continuous pressure on the enemy defense, each trade has a chance to result in a net Pawn loss (depending on which team’s Pawns have higher turn priority due to being spawned earlier), building up a deficit over time.  
+
+\subsubsection{Slow Push}
+\hspace{\parindent}
+Slow push bots are very similar to hard push bots, with the main difference being that slow push bots have a higher threshold that support levels need to meet before starting an attack. In the case of one of our bots, for any Pawn on the frontline, if there are defenders in all of the tiles behind it and within its sensing radius, it will push. Another condition that slow push bots frequently use to choose when to attack is a timer. Pawns wait a set amount of turns (typically between 50 and 200) before attacking, and certain actions or game states may pause or reset that timer. 
+\bigbreak
+With either attack trigger method, slow push strats initiate fewer attacks and push up the board more slowly (as the name suggests) but also more methodically than hard push bots. As a result of attacking less frequently, slow push bots usually don’t have as large of a Pawn deficit against defense bots, and typically they have Pawn advantages against other attack bots, allowing for easy victories in the late game. Furthermore, slow push bots attack more successfully because Pawns wait until they have full support, rather than rushing in constantly with minimal backup.
+
+\subsubsection{Rush}
+\hspace{\parindent}
+A few teams used a rush strategy, which was very different from all the previously mentioned bots in that they don’t attack throughout the entire board. Instead, the Overlord swarmed one side of the board, or sometimes only two or three columns, with a massive amount of Pawns and kept a weak defense across the rest of the board. This works well against pure defense strats, as the enemy won’t push against the rush bot’s weak defense, but the rush bot often will win the side of the board that it attacks. Against slow and hard push bots, however, the weak defense is typically the failing point. 
+
+\subsection{Machine Learning Bots}
+\hspace{\parindent}
+The relative simplicity of this game compared to other Battlecode games made using machine learning to develop bots a possibility, and there were a few teams that tried this, cooljoseph and programjames (D5) being the first to do so. It was very impressive to see them create a pretty good bot using genetic algorithms and neural networks, and the fact that these bots decided the best strategy was to spawn Pawns in every other column was quite interesting.
+
+\subsection{Overlord Spawning Strats}
+\hspace{\parindent}
+--PLACEHOLDER--
+
+\subsection{Our Strats}
+\hspace{\parindent}
+Having mentioned the overall strats we encountered throughout the week, what strats did we use? The first bot we considered was the lattice bot, but once that was implemented, we saw that it was very difficult to maintain the lattice structure, so we quickly looked for other options. We knew defense bots were not the move, since they would always end up being RPS against other defense bots, and also lose to well-designed push bots, so the next strat we tried out was a hard push bot. --NOT FINISHED--
+
+\section{Micro Gameplay}
+\hspace{\parindent}
+Figuring out the logic for individual Pawns is just as important as overall macro strategies; just a few bad trades by Pawns can lead to a large disadvantage and even a loss, which is why it’s vital to make sure your Pawn capture logic is on point.
+
+\subsection{When to Capture}
+\hspace{\parindent}
+--PLACEHOLDER--
+
+\subsection{What to Capture}
+\hspace{\parindent}
+--PLACEHOLDER--
+
+\section{Final Thoughts \& Advice}
+
+\subsection{Open Source Tools}
+\hspace{\parindent}
+Although the devs had provided a visualizer that printed to the terminal, it was difficult to keep track of what Pawn was where and there was no way to easily navigate the file. The open-source visualizers made analyzing replays a lot easier. Special thanks to rzhan11 (Kryptonite) for his JavaScript visualizer, cooljoseph (D5) for his Fancy pygame visualizer, and Houwang (IDIOTS) for his minimal visualizer.
+\bigbreak
+Additionally, cooljoseph (D5) made a minimal python engine. Although we didn’t use it much, many people said that it sped the games up by more than 30x, and that turned out to be especially useful for training their ML algorithms.
+
+\subsection{Game Improvements}
+\hspace{\parindent}
+Although the game appeared to be extremely simple at first, there turned out to be tons of amazing strategies and metas. I loved the simplicity of the game, as it was much easier to create an AI for and try out various strategies. However, there are also some minor tweaks that could be made to further improve the game. One problem that many people had was that most AIs were deterministic, and since there was only one board, the matchups would result in the same game every time. Since making different “maps” isn’t necessarily an option, one idea suggested by programjames (D5) was to start off the game with 1 or 2 Pawns in random, symmetric locations for each team, creating a sense of randomness to each game and making it less deterministic.
+\bigbreak
+Another idea that we had was to add a form of communication between the Pawns and the Overlord, and between the Pawns themselves. The communication would allow for various new strategies, such as distracting the opponent on one side of the board while planning an attack on the other. One way of implementing this would be with a Blockchain system similar to Battlecode 2020, in which every piece could upload a certain amount of bits to a global ledger, which anyone could read from. This communication could also be limited to one way, for example having Overlord be able to broadcast information to Pawns, but not the other way around.
+
+\subsection{Advice}
+\hspace{\parindent}
+Throughout both Battlecode20 and Battlehack, we got a lot of advice from other competitors and from teh devs through their tutorials that made creating a bot so much simpler, especially as newcomers, so now we would love to share that advice with others!
+\bigbreak
+In terms of actually coding your bots, organization is key to staying on top of things throughout the entire competition. This means commenting your code, using classes, separating your code into multiple files when possible, and having a proper version control and naming system. All of this will make it easier for you to understand your own code and the changes you make between different iterations of bots. Speaking of iterations, always make a new bot in a new folder when you add any sort of changes to your bot (even if you think they are minor), as this will let you play a match between the old and new bots to see if improvements were made.
+\bigbreak
+If there’s one thing to remember out of this entire writeup, it’s to join the Battlecode discord. There’s just a ton of information on it, everything from logistics about the competition to clarifications about different aspects of the game, and most importantly, a community that’s willing to share and discuss ideas. You are guaranteed to find help with pretty much anything on the discord, and especially for new teams, this flattens the learning curve by a lot.
+
+\subsection{Final Thoughts}
+\hspace{\parindent}
+--PLACEHOLDER--
+
+\end{document}
